@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillType="evenOdd"
+        android:fillColor="#8EF5F0"
+        android:pathData="
+            M20,44 h12 v4 h-8 v4 h8 v8 h-12 v-4 h8 v-4 h-8 z
+            M38,44 h4 v20 h-4 z
+            M60,44 h-12 v20 h12 v-4 h-8 v-12 h8 z
+            M66,44 h12 v20 h-12 z M70,48 v12 h4 v-12 z
+            M84,44 h4 v20 h-4 z
+        "/>
+</vector>

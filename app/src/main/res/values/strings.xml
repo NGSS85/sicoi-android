@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">SICOI Mobile</string>
+    <string name="notification_channel_name">Ordens de Serviço</string>
+    <string name="notification_channel_desc">Notificações de novas Ordens de Serviço urgentes do SICOI</string>
+    <string name="btn_login">Entrar</string>
+    <string name="btn_signup">Criar Conta</string>
+    <string name="btn_finalize">Finalizar Ordem de Serviço</string>
+    <string name="label_email">E-mail</string>
+    <string name="label_password">Senha</string>
+    <string name="label_full_name">Nome Completo</string>
+    <string name="label_company">Empresa / Setor</string>
+    <string name="hint_solution">Descreva a solução aplicada ao problema...</string>
+    <string name="hint_parts">Liste as peças substituídas...</string>
+    <string name="hint_time">Ex: 2h 30min</string>
+    <string name="status_online">Sistema Online</string>
+    <string name="status_offline">Modo Offline</string>
+    <string name="approval_pending_title">Cadastro Pendente</string>
+    <string name="approval_pending_msg">Seu cadastro está aguardando aprovação do administrador. Aguarde o contato.</string>
+    <string name="approval_rejected_msg">Acesso negado. Seu cadastro foi rejeitado. Entre em contato com o administrador.</string>
+</resources>
