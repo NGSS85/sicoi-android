@@ -172,13 +172,16 @@ fun TechniciansScreen(
 
                     Text(
                         "Manutenção Industrial Mobile",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 24.sp,
+                            letterSpacing = 0.3.sp
                         ),
-                        color = Color(0xFFD97706),
+                        color = Color(0xFFF59E0B),
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
                     )
                 }
             }
@@ -190,31 +193,39 @@ fun TechniciansScreen(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
-            // 2. Novo Botão de Ordem de Serviço
-            Spacer(modifier = Modifier.height(8.dp))
+            // 2. Botão Formulário de OS com ícone e estilo aprimorado
+            Spacer(modifier = Modifier.height(10.dp))
             Button(
                 onClick = onNavigateToPinList,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = SicoiOrange,
                     contentColor = Color.White
                 ),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
             ) {
-                Icon(
-                    Icons.Default.NoteAdd,
-                    contentDescription = null,
-                    modifier = Modifier.size(22.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(Color.White.copy(alpha = 0.2f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Assignment,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    "Inserir Formulário Ordem de serviço",
+                    "Formulário de OS",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
+                        fontSize = 16.sp
                     )
                 )
             }
@@ -280,10 +291,14 @@ fun TechniciansScreen(
                 }
                 is TechniciansUiState.Success -> {
                     val filtered = s.technicians.filter { tech ->
+                        val hasValidName = tech.name.isNotBlank() &&
+                                           !tech.name.contains("Sem cadastro", ignoreCase = true) &&
+                                           !tech.name.contains("Sem nome", ignoreCase = true) &&
+                                           !tech.name.equals("Nenhum", ignoreCase = true)
                         val isTecnico = tech.role.equals("Técnico", ignoreCase = true) ||
                                         tech.role.equals("Ambos", ignoreCase = true) ||
                                         tech.role.isBlank()
-                        isTecnico && (searchQuery.isBlank() || tech.name.contains(searchQuery, ignoreCase = true))
+                        hasValidName && isTecnico && (searchQuery.isBlank() || tech.name.contains(searchQuery, ignoreCase = true))
                     }
 
                     if (filtered.isEmpty()) {

@@ -49,7 +49,8 @@ fun TechniciansPinScreen(
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     IconButton(
                         onClick = onNavigateBack,
@@ -58,30 +59,6 @@ fun TechniciansPinScreen(
                             .background(SicoiCard)
                     ) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = SicoiTextSecondary)
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            "SOLICITANTES CADASTRADOS",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp
-                            ),
-                            color = SicoiOrange
-                        )
-                        Text(
-                            "Selecione o Solicitante (PIN)",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = SicoiTextPrimary,
-                            textAlign = TextAlign.Center
-                        )
                     }
 
                     IconButton(onClick = { viewModel.fetchTechnicians() }) {
@@ -97,7 +74,36 @@ fun TechniciansPinScreen(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Títulos abaixo da linha da seta de retorno (+40% de tamanho)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "SOLICITANTES CADASTRADOS",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 17.sp,
+                        letterSpacing = 1.2.sp
+                    ),
+                    color = SicoiOrange,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Selecione o Solicitante (PIN)",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp
+                    ),
+                    color = SicoiTextPrimary,
+                    textAlign = TextAlign.Center
+                )
+            }
 
             // Barra de busca
             OutlinedTextField(
@@ -148,8 +154,12 @@ fun TechniciansPinScreen(
                 }
                 is TechniciansUiState.Success -> {
                     val filtered = s.technicians.filter { tech ->
+                        val hasValidName = tech.name.isNotBlank() &&
+                                           !tech.name.contains("Sem cadastro", ignoreCase = true) &&
+                                           !tech.name.contains("Sem nome", ignoreCase = true) &&
+                                           !tech.name.equals("Nenhum", ignoreCase = true)
                         val isSolicitante = tech.role.equals("Solicitante", ignoreCase = true) || tech.role.equals("Ambos", ignoreCase = true)
-                        isSolicitante && (
+                        hasValidName && isSolicitante && (
                             searchQuery.isBlank() ||
                             tech.name.contains(searchQuery, ignoreCase = true) ||
                             (tech.pin != null && tech.pin.contains(searchQuery, ignoreCase = true))

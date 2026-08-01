@@ -42,23 +42,6 @@ fun ModulesScreen(
     onNavigateToMaintenance: () -> Unit,
     onLogout: () -> Unit
 ) {
-    var showSettingsDialog by remember { mutableStateOf(false) }
-    var userRole by remember { mutableStateOf("Solicitante") }
-    var userPin by remember { mutableStateOf("2839") }
-
-    if (showSettingsDialog) {
-        UserSettingsDialog(
-            currentName = userName,
-            currentRole = userRole,
-            currentPin = userPin,
-            onDismiss = { showSettingsDialog = false },
-            onSaveSettings = { role, pin ->
-                userRole = role
-                userPin = pin
-                showSettingsDialog = false
-            }
-        )
-    }
 
     val modules = listOf(
         SicoiModule("ferramentaria", "Ferramentaria",
@@ -117,25 +100,14 @@ fun ModulesScreen(
                                 color = SicoiTextPrimary
                             )
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            IconButton(
-                                onClick = { showSettingsDialog = true },
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(SicoiCard)
-                                    .border(1.dp, SicoiCardBorder, RoundedCornerShape(12.dp))
-                            ) {
-                                Icon(Icons.Default.Settings, contentDescription = "Configurações", tint = SicoiOrange)
-                            }
-                            IconButton(
-                                onClick = onLogout,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(SicoiCard)
-                                    .border(1.dp, SicoiCardBorder, RoundedCornerShape(12.dp))
-                            ) {
-                                Icon(Icons.Default.Logout, contentDescription = "Sair", tint = SicoiError.copy(alpha = 0.8f))
-                            }
+                        IconButton(
+                            onClick = onLogout,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(SicoiCard)
+                                .border(1.dp, SicoiCardBorder, RoundedCornerShape(12.dp))
+                        ) {
+                            Icon(Icons.Default.Logout, contentDescription = "Sair", tint = SicoiError.copy(alpha = 0.8f))
                         }
                     }
 
