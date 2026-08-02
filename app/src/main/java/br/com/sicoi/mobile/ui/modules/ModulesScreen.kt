@@ -88,27 +88,49 @@ fun ModulesScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            Text(
-                                "Olá, ${userName.split(" ").firstOrNull() ?: "Usuário"}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = SicoiTextMuted
-                            )
-                            Text(
-                                "Escolha o módulo",
-                                style = MaterialTheme.typography.headlineLarge,
-                                color = SicoiTextPrimary
-                            )
-                        }
-                        IconButton(
-                            onClick = onLogout,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(SicoiCard)
-                                .border(1.dp, SicoiCardBorder, RoundedCornerShape(12.dp))
+                        Text(
+                            "Olá Tecnico e Usuario",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp),
+                            color = SicoiTextMuted
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(Icons.Default.Logout, contentDescription = "Sair", tint = SicoiError.copy(alpha = 0.8f))
+                            val themeController = LocalThemeController.current
+                            IconButton(
+                                onClick = { themeController.toggleTheme() },
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(SicoiCard)
+                                    .border(1.dp, SicoiCardBorder, RoundedCornerShape(12.dp))
+                            ) {
+                                Icon(
+                                    if (themeController.isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode, 
+                                    contentDescription = "Tema", 
+                                    tint = SicoiTextPrimary
+                                )
+                            }
+                            IconButton(
+                                onClick = onLogout,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(SicoiCard)
+                                    .border(1.dp, SicoiCardBorder, RoundedCornerShape(12.dp))
+                            ) {
+                                @Suppress("DEPRECATION")
+                                Icon(Icons.Default.Logout, contentDescription = "Sair", tint = SicoiError.copy(alpha = 0.8f))
+                            }
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Column {
+                        Text(
+                            "Escolha o módulo",
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = SicoiTextPrimary
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -125,7 +147,7 @@ fun ModulesScreen(
                         )
                         Text(
                             "Sistema Online",
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp),
                             color = SicoiSuccess
                         )
                     }
@@ -153,10 +175,10 @@ fun ModulesScreen(
 
             // Footer
             Text(
-                "SICOI Mobile v1.0 · MC Industrial",
+                "SICOI Mobile v1.0",
                 modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                color = SicoiTextMuted.copy(alpha = 0.4f),
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                color = SicoiTextMuted.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center
             )
         }
@@ -220,6 +242,7 @@ private fun ModuleCard(
                 Text(
                     module.title,
                     style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 18.sp,
                         color = if (module.isActive) SicoiTextPrimary else SicoiTextMuted
                     )
                 )
@@ -227,7 +250,7 @@ private fun ModuleCard(
                 if (module.isActive) {
                     Text(
                         module.description,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, color = SicoiTextSecondary)
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, color = SicoiTextSecondary)
                     )
                 } else {
                     Row(
@@ -237,7 +260,7 @@ private fun ModuleCard(
                         Icon(Icons.Default.Lock, contentDescription = null, tint = SicoiTextMuted, modifier = Modifier.size(11.dp))
                         Text(
                             "Em desenvolvimento",
-                            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
+                            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp, fontSize = 13.sp),
                             color = SicoiTextMuted
                         )
                     }

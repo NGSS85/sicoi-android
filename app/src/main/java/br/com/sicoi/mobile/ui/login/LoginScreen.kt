@@ -102,7 +102,7 @@ fun LoginScreen(
         )
     }
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(
@@ -138,33 +138,17 @@ fun LoginScreen(
 
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .heightIn(min = maxHeight)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 28.dp, vertical = 48.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Logo + Identidade visual
-            Box(
-                modifier = Modifier.size(96.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = androidx.compose.ui.res.painterResource(id = br.com.sicoi.mobile.R.drawable.logo_sicoi),
-                    contentDescription = "SICOI Logo",
-                    tint = Color.Unspecified,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
             Text(
                 text = "SICOI",
                 style = MaterialTheme.typography.displayLarge.copy(
-                    fontSize = 42.sp,
+                    fontSize = 50.sp,
                     letterSpacing = 6.sp,
                     brush = Brush.horizontalGradient(
                         colors = listOf(SicoiOrange, SicoiOrangeLight, Color.White)
@@ -175,6 +159,7 @@ fun LoginScreen(
             Text(
                 text = "Sistema de Controle Industrial",
                 style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 16.sp,
                     letterSpacing = 1.sp,
                     color = SicoiTextSecondary
                 ),
@@ -195,7 +180,9 @@ fun LoginScreen(
 
                     Text(
                         "Acesso ao Sistema",
-                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
                         color = SicoiTextPrimary
                     )
 

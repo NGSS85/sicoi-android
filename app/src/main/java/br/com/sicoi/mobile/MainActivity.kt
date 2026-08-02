@@ -8,6 +8,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import android.content.Context
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import br.com.sicoi.mobile.ui.theme.LocalThemeController
+import br.com.sicoi.mobile.ui.theme.ThemeController
 import br.com.sicoi.mobile.core.network.SupabaseClient
 import br.com.sicoi.mobile.core.sync.OfflineSyncWorker
 import br.com.sicoi.mobile.ui.theme.SicoiMobileTheme
@@ -46,11 +54,26 @@ class MainActivity : ComponentActivity() {
         requestNotificationPermission()
 
         setContent {
-            SicoiMobileTheme {
-                SicoiNavGraph(
-                    startDestination = startRoute,
-                    onLogout = { SupabaseClient.client.auth.signOut() }
-                )
+            val prefs = remember { getSharedPreferences("SicoiThemePrefs", Context.MODE_PRIVATE) }
+            var isDarkTheme by remember { mutableStateOf(prefs.getBoolean("is_dark_theme", true)) }
+
+            val themeController = remember {
+                object : ThemeController {
+                    override val isDarkTheme: Boolean get() = isDarkTheme
+                    override fun toggleTheme() {
+                        isDarkTheme = !isDarkTheme
+                        prefs.edit().putBoolean("is_dark_theme", isDarkTheme).apply()
+                    }
+                }
+            }
+
+            CompositionLocalProvider(LocalThemeController provides themeController) {
+                SicoiMobileTheme {
+                    SicoiNavGraph(
+                        startDestination = startRoute,
+                        onLogout = { SupabaseClient.client.auth.signOut() }
+                    )
+                }
             }
         }
 

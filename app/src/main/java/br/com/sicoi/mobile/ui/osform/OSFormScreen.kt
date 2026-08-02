@@ -342,8 +342,8 @@ fun OSFormScreen(
                                                 Icon(Icons.Default.Person, contentDescription = null, tint = SicoiSuccess, modifier = Modifier.size(20.dp))
                                             }
                                             Column {
-                                                Text("Dados do Solicitante", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
-                                                Text("Quem está solicitando a O.S.", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
+                                                Text("Dados do Solicitante", style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.6.sp), color = SicoiTextPrimary)
+                                                Text("Quem está solicitando a O.S.", style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.2.sp), color = SicoiTextMuted)
                                             }
                                         }
 
@@ -355,7 +355,8 @@ fun OSFormScreen(
                                             value = viewModel.solicitanteForm,
                                             onValueChange = { viewModel.solicitanteForm = it },
                                             placeholder = "Digite seu nome completo...",
-                                            icon = Icons.Default.Person
+                                            icon = Icons.Default.Person,
+                                            isTab0 = true
                                         )
 
                                         // Data (somente leitura — preenchida automaticamente)
@@ -365,7 +366,8 @@ fun OSFormScreen(
                                         ReadOnlyOSField(
                                             label = "Data da Solicitação (automático)",
                                             value = today,
-                                            icon = Icons.Default.CalendarToday
+                                            icon = Icons.Default.CalendarToday,
+                                            isTab0 = true
                                         )
 
                                         // Hora (somente leitura — preenchida automaticamente)
@@ -375,7 +377,8 @@ fun OSFormScreen(
                                         ReadOnlyOSField(
                                             label = "Hora (automático ao salvar)",
                                             value = currentTime,
-                                            icon = Icons.Default.AccessTime
+                                            icon = Icons.Default.AccessTime,
+                                            isTab0 = true
                                         )
                                     }
                                 }
@@ -773,19 +776,27 @@ private fun EditableOSField(
     onValueChange: (String) -> Unit,
     placeholder: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    minLines: Int = 1
+    minLines: Int = 1,
+    isTab0: Boolean = false
 ) {
+    val scaleLabel = if (isTab0) 1.1f else 1.0f
+    val scaleValue = if (isTab0) 1.15f else 1.0f
+    val weight = if (isTab0) androidx.compose.ui.text.font.FontWeight.Bold else null
+    val defaultLabelSize = 11.sp
+    val defaultBodySize = 16.sp
+
     Column {
         Text(
             label,
-            style = MaterialTheme.typography.labelSmall.copy(color = SicoiTextSecondary, letterSpacing = 0.5.sp)
+            style = MaterialTheme.typography.labelSmall.copy(color = SicoiTextSecondary, letterSpacing = 0.5.sp, fontSize = defaultLabelSize * scaleLabel)
         )
         Spacer(modifier = Modifier.height(4.dp))
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
+            textStyle = LocalTextStyle.current.copy(fontSize = defaultBodySize * scaleValue, fontWeight = weight),
             placeholder = {
-                Text(placeholder, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, color = SicoiTextMuted))
+                Text(placeholder, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp * scaleLabel, color = SicoiTextMuted))
             },
             leadingIcon = {
                 Icon(icon, contentDescription = null, tint = SicoiTextMuted, modifier = Modifier.size(18.dp))
@@ -802,12 +813,18 @@ private fun EditableOSField(
 private fun ReadOnlyOSField(
     label: String,
     value: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    isTab0: Boolean = false
 ) {
+    val scaleLabel = if (isTab0) 1.1f else 1.0f
+    val scaleValue = if (isTab0) 1.15f else 1.0f
+    val weight = if (isTab0) androidx.compose.ui.text.font.FontWeight.Bold else null
+    val defaultLabelSize = 11.sp
+
     Column {
         Text(
             label,
-            style = MaterialTheme.typography.labelSmall.copy(color = SicoiTextMuted, letterSpacing = 0.5.sp)
+            style = MaterialTheme.typography.labelSmall.copy(color = SicoiTextMuted, letterSpacing = 0.5.sp, fontSize = defaultLabelSize * scaleLabel)
         )
         Spacer(modifier = Modifier.height(4.dp))
         Box(
@@ -827,7 +844,8 @@ private fun ReadOnlyOSField(
                     value,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = SicoiTextPrimary.copy(alpha = 0.85f),
-                        fontSize = 13.sp
+                        fontSize = 13.sp * scaleValue,
+                        fontWeight = weight
                     )
                 )
             }

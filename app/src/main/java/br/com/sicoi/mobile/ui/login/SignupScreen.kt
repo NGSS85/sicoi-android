@@ -41,7 +41,8 @@ fun SignupScreen(
     var password by remember { mutableStateOf("") }
     var fullName by remember { mutableStateOf("") }
     var company  by remember { mutableStateOf("") }
-    var pin by remember { mutableStateOf("2839") }
+    var pin by remember { mutableStateOf("") }
+    var role by remember { mutableStateOf("Técnico") }
     var showPassword by remember { mutableStateOf(false) }
 
     LaunchedEffect(signupState) {
@@ -117,6 +118,43 @@ fun SignupScreen(
             ) {
                 Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
 
+                    // Seleção de Papel
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (role == "Técnico") SicoiBlue.copy(alpha = 0.15f) else SicoiSurface)
+                                .border(1.dp, if (role == "Técnico") SicoiBlue else SicoiCardBorder, RoundedCornerShape(12.dp))
+                                .clickable { role = "Técnico" }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Default.Engineering, contentDescription = null, tint = if (role == "Técnico") SicoiBlue else SicoiTextMuted, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Técnico", color = if (role == "Técnico") SicoiBlue else SicoiTextMuted, style = MaterialTheme.typography.bodyMedium)
+                        }
+                        Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (role == "Usuário") SicoiBlue.copy(alpha = 0.15f) else SicoiSurface)
+                                .border(1.dp, if (role == "Usuário") SicoiBlue else SicoiCardBorder, RoundedCornerShape(12.dp))
+                                .clickable { role = "Usuário" }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Default.Person, contentDescription = null, tint = if (role == "Usuário") SicoiBlue else SicoiTextMuted, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Usuário", color = if (role == "Usuário") SicoiBlue else SicoiTextMuted, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+
                     OutlinedTextField(
                         value = fullName,
                         onValueChange = { fullName = it },
@@ -181,8 +219,8 @@ fun SignupScreen(
 
                     OutlinedTextField(
                         value = pin,
-                        onValueChange = { pin = it },
-                        label = { Text("PIN de Acesso (Padrão 2839)") },
+                        onValueChange = { if (it.length <= 6) pin = it },
+                        label = { Text("Crie seu PIN (4 a 6 dígitos) *") },
                         leadingIcon = { Icon(Icons.Default.Pin, contentDescription = null, tint = SicoiTextMuted) },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
@@ -190,7 +228,7 @@ fun SignupScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = {
                             focusManager.clearFocus()
-                            viewModel.signUp(email, password, fullName, company)
+                            viewModel.signUp(email, password, fullName, company, role, pin)
                         }),
                         colors = sicoiTextFieldColors()
                     )
@@ -215,7 +253,7 @@ fun SignupScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Button(
-                        onClick = { viewModel.signUp(email, password, fullName, company) },
+                        onClick = { viewModel.signUp(email, password, fullName, company, role, pin) },
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = SicoiBlue, contentColor = Color.White),

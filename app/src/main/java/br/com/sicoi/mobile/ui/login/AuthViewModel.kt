@@ -59,14 +59,14 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun signUp(email: String, password: String, fullName: String, company: String) {
-        if (email.isBlank() || password.isBlank() || fullName.isBlank()) {
+    fun signUp(email: String, password: String, fullName: String, company: String, role: String, pin: String) {
+        if (email.isBlank() || password.isBlank() || fullName.isBlank() || pin.isBlank()) {
             _signupState.value = SignupUiState.Error("Preencha todos os campos obrigatórios")
             return
         }
         viewModelScope.launch {
             _signupState.value = SignupUiState.Loading
-            _signupState.value = when (val result = authRepository.signUp(email, password, fullName, company)) {
+            _signupState.value = when (val result = authRepository.signUp(email, password, fullName, company, role, pin)) {
                 is AuthResult.Success -> SignupUiState.Success
                 is AuthResult.Error   -> SignupUiState.Error(result.message)
             }

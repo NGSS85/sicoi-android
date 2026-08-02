@@ -15,51 +15,43 @@ val SicoiTypography = Typography(
         fontWeight = FontWeight.Black,
         fontSize   = 36.sp,
         lineHeight = 44.sp,
-        letterSpacing = (-0.5).sp,
-        color = SicoiTextPrimary
+        letterSpacing = (-0.5).sp
     ),
     headlineLarge = TextStyle(
         fontWeight = FontWeight.ExtraBold,
         fontSize   = 28.sp,
-        lineHeight = 36.sp,
-        color = SicoiTextPrimary
+        lineHeight = 36.sp
     ),
     headlineMedium = TextStyle(
         fontWeight = FontWeight.Bold,
         fontSize   = 22.sp,
-        lineHeight = 30.sp,
-        color = SicoiTextPrimary
+        lineHeight = 30.sp
     ),
     titleLarge = TextStyle(
         fontWeight = FontWeight.Bold,
         fontSize   = 18.sp,
-        lineHeight = 26.sp,
-        color = SicoiTextPrimary
+        lineHeight = 26.sp
     ),
     titleMedium = TextStyle(
         fontWeight = FontWeight.SemiBold,
         fontSize   = 14.sp,
         lineHeight = 20.sp,
-        letterSpacing = 0.1.sp,
-        color = SicoiTextPrimary
+        letterSpacing = 0.1.sp
     ),
     bodyLarge = TextStyle(
         fontWeight = FontWeight.Normal,
         fontSize   = 16.sp,
-        lineHeight = 24.sp,
-        color = SicoiTextSecondary
+        lineHeight = 24.sp
     ),
     bodyMedium = TextStyle(
         fontWeight = FontWeight.Normal,
         fontSize   = 14.sp,
-        lineHeight = 20.sp,
-        color = SicoiTextSecondary
+        lineHeight = 20.sp
     ),
     labelSmall = TextStyle(
         fontWeight = FontWeight.Bold,
         fontSize   = 10.sp,
         lineHeight = 14.sp,
-        letterSpacing = 1.sp,
-        color = SicoiTextMuted
+        letterSpacing = 1.sp
     )
 )

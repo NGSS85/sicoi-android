@@ -75,7 +75,9 @@ class AuthRepository @Inject constructor() {
         email: String,
         password: String,
         fullName: String,
-        company: String
+        company: String,
+        role: String,
+        pin: String
     ): AuthResult<Unit> {
         return try {
             auth.signUpWith(Email) {
@@ -84,6 +86,8 @@ class AuthRepository @Inject constructor() {
                 data = kotlinx.serialization.json.buildJsonObject {
                     put("full_name", kotlinx.serialization.json.JsonPrimitive(fullName))
                     put("company", kotlinx.serialization.json.JsonPrimitive(company))
+                    put("role", kotlinx.serialization.json.JsonPrimitive(role))
+                    put("pin", kotlinx.serialization.json.JsonPrimitive(pin))
                     put("is_mobile_user", kotlinx.serialization.json.JsonPrimitive(true))
                 }
             }
