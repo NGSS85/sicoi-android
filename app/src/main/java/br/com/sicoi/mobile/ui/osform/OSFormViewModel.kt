@@ -136,23 +136,51 @@ class OSFormViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = OSFormUiState.Saving
             val isOnline = isNetworkAvailable()
-            val newOsNumber = "OS-${(1000..9999).random()}"
+            
+            // Busca a numeração sequencial unificada (ex: 001/26, 002/26...) ao salvar
+            val generatedOsNumber = if (isOnline) {
+                repository.fetchNextOsNumber()
+            } else {
+                val yearSuffix = "/${java.text.SimpleDateFormat("yy", java.util.Locale.getDefault()).format(java.util.Date())}"
+                "001$yearSuffix"
+            }
+
             val todayDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+            val currentTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+
+            val finalTechnician = technicianName.ifBlank { "Não Atribuído" }
+
+            val rq11Json = """
+                {
+                    "os_number": "$generatedOsNumber",
+                    "date": "$todayDate",
+                    "time": "$currentTime",
+                    "responsible": "$solicitante",
+                    "solicitante": "$solicitante",
+                    "equipment": "$equipamento",
+                    "equipment_no": "$patrimonioForm",
+                    "priority": "${prioridade.lowercase()}",
+                    "description_to_execute": "$descricaoProblema",
+                    "assigned_technician": "$finalTechnician"
+                }
+            """.trimIndent()
+
             val newOrder = WorkOrder(
-                id = "OS-${System.currentTimeMillis()}",
-                numeroOs = newOsNumber,
+                id = java.util.UUID.randomUUID().toString(),
+                numeroOs = generatedOsNumber,
                 dataAbertura = todayDate,
-                tecnicoResponsavel = technicianName,
+                tecnicoResponsavel = finalTechnician,
                 solicitante = solicitante.ifBlank { "Solicitante" },
                 equipamento = equipamento,
                 setor = setor,
                 prioridade = prioridade.ifBlank { "Normal" },
                 descricaoProblema = descricaoProblema,
+                solucaoAplicada = "[RQ-11-DIGITAL]: $rq11Json",
                 status = "Em Aberto"
             )
             repository.createWorkOrder(newOrder, isOnline).fold(
                 onSuccess = {
-                    _state.value = OSFormUiState.SavedOnline("Formulário de Ordem de Serviço enviado com sucesso!")
+                    _state.value = OSFormUiState.SavedOnline("Ordem de Serviço $generatedOsNumber gerada e enviada com sucesso!")
                     onSuccess()
                 },
                 onFailure = {
