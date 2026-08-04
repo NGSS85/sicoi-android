@@ -5,6 +5,7 @@ import br.com.sicoi.mobile.core.database.AppDatabase
 import br.com.sicoi.mobile.core.database.entity.WorkOrderEntity
 import br.com.sicoi.mobile.core.network.SupabaseClient
 import br.com.sicoi.mobile.data.model.Technician
+import br.com.sicoi.mobile.data.model.UserProfile
 import br.com.sicoi.mobile.data.model.WorkOrder
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.flow.Flow
@@ -52,30 +53,67 @@ class WorkOrderRepository @Inject constructor(
     fun getOpenOrdersFlow(): Flow<List<WorkOrderEntity>> =
         database.workOrderDao().getOpenOrders()
 
-    /** Busca lista de técnicos e solicitantes do Supabase (com fallback) */
+    /** Busca lista de técnicos de user_profiles (Aprovados e com role Técnico ou Ambos) */
     suspend fun fetchTechnicians(): Result<List<Technician>> {
         return try {
-            val result = postgrest["ind_maint_technicians"]
-                .select()
-                .decodeList<Technician>()
-            if (result.isNotEmpty()) {
-                Result.success(result)
-            } else {
-                Result.success(getDefaultTechniciansAndRequesters())
-            }
+            val profiles = postgrest["user_profiles"]
+                .select {
+                    filter {
+                        eq("approval_status", "approved")
+                    }
+                }
+                .decodeList<UserProfile>()
+
+            val technicians = profiles
+                .filter { it.role.equals("Técnico", ignoreCase = true) || it.role.equals("Ambos", ignoreCase = true) }
+                .map { profile ->
+                    Technician(
+                        id     = profile.id,
+                        name   = profile.fullName ?: profile.email,
+                        status = if (profile.approvalStatus == "approved") "Aprovado" else "Pendente",
+                        pin    = profile.pin,
+                        role   = profile.role
+                    )
+                }
+
+            Result.success(technicians)
         } catch (e: Exception) {
-            Result.success(getDefaultTechniciansAndRequesters())
+            Log.e("WorkOrderRepo", "fetchTechnicians erro: ${e.message}")
+            Result.success(emptyList())
         }
     }
 
-    private fun getDefaultTechniciansAndRequesters(): List<Technician> {
-        return listOf(
-            Technician(id = "1", name = "Rodrigo", status = "Ativo", pin = "1001", role = "Técnico"),
-            Technician(id = "2", name = "Luiz", status = "Ativo", pin = "1002", role = "Técnico"),
-            Technician(id = "3", name = "Carlos Solicitante", status = "Ativo", pin = "2001", role = "Solicitante"),
-            Technician(id = "4", name = "Ana Maria Solicitante", status = "Ativo", pin = "2002", role = "Solicitante"),
-            Technician(id = "5", name = "João Silva", status = "Ativo", pin = "3001", role = "Ambos")
-        )
+    /**
+     * Busca solicitantes aprovados diretamente de user_profiles.
+     * Só aparecem quem o admin aprovou na Gestão de Acessos.
+     */
+    suspend fun fetchRequesters(): Result<List<Technician>> {
+        return try {
+            val profiles = postgrest["user_profiles"]
+                .select {
+                    filter {
+                        eq("approval_status", "approved")
+                    }
+                }
+                .decodeList<UserProfile>()
+
+            val requesters = profiles
+                .filter { it.role.equals("Solicitante", ignoreCase = true) || it.role.equals("Ambos", ignoreCase = true) }
+                .map { profile ->
+                    Technician(
+                        id     = profile.id,
+                        name   = profile.fullName ?: profile.email,
+                        status = if (profile.approvalStatus == "approved") "Aprovado" else "Pendente",
+                        pin    = profile.pin,
+                        role   = profile.role
+                    )
+                }
+
+            Result.success(requesters)
+        } catch (e: Exception) {
+            Log.e("WorkOrderRepo", "fetchRequesters erro: ${e.message}")
+            Result.success(emptyList())
+        }
     }
 
     /**

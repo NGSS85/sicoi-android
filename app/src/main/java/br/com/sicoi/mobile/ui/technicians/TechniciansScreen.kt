@@ -174,7 +174,7 @@ fun TechniciansScreen(
                         "Manutenção Industrial Mobile",
                         style = MaterialTheme.typography.headlineSmall.copy(
                             fontWeight = FontWeight.ExtraBold,
-                            fontSize = 24.sp,
+                            fontSize = 28.sp,
                             letterSpacing = 0.3.sp
                         ),
                         color = Color(0xFFF59E0B),
@@ -191,54 +191,93 @@ fun TechniciansScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 2. Botão Formulário de OS com ícone e estilo aprimorado
+            // Frase instrucional centralizada com setas
             Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Default.ArrowBack,
+                    contentDescription = null,
+                    tint = SicoiTextSecondary,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "Usuarios abrir Formulario",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.4.sp,
+                        letterSpacing = 0.3.sp
+                    ),
+                    color = SicoiTextSecondary,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    Icons.Default.ArrowForward,
+                    contentDescription = null,
+                    tint = SicoiTextSecondary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            // Botão Formulário de OS - fundo branco, texto escuro negrito, largura 85%
             Button(
                 onClick = onNavigateToPinList,
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxWidth(0.85f)
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = SicoiOrange,
-                    contentColor = Color.White
+                    containerColor = Color.White,
+                    contentColor = Color(0xFF1A237E)
                 ),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
             ) {
                 Box(
                     modifier = Modifier
                         .size(32.dp)
-                        .background(Color.White.copy(alpha = 0.2f), CircleShape),
+                        .background(Color(0xFF1A237E).copy(alpha = 0.1f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Default.Assignment,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = Color(0xFF1A237E),
                         modifier = Modifier.size(18.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    "Formulário de OS",
+                    "Abrir - Formulário O.S",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                        fontSize = 18.sp
                     )
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
-            // 4. Título da Seção "Técnicos"
+            // 4. Título da Seção
             Text(
-                "Técnicos",
+                "Técnicos, Abaixo",
                 style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 26.sp,
+                    letterSpacing = 0.5.sp
                 ),
-                color = SicoiTextPrimary
+                color = SicoiTextPrimary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -290,16 +329,27 @@ fun TechniciansScreen(
                     }
                 }
                 is TechniciansUiState.Success -> {
-                    val filtered = s.technicians.filter { tech ->
-                        val hasValidName = tech.name.isNotBlank() &&
-                                           !tech.name.contains("Sem cadastro", ignoreCase = true) &&
-                                           !tech.name.contains("Sem nome", ignoreCase = true) &&
-                                           !tech.name.equals("Nenhum", ignoreCase = true)
-                        val isTecnico = tech.role.equals("Técnico", ignoreCase = true) ||
-                                        tech.role.equals("Ambos", ignoreCase = true) ||
-                                        tech.role.isBlank()
-                        hasValidName && isTecnico && (searchQuery.isBlank() || tech.name.contains(searchQuery, ignoreCase = true))
-                    }
+                    // Remove duplicatas e nomes excluídos
+                    val seenRodrigo = mutableSetOf<String>()
+                    val seenLuiz = mutableSetOf<String>()
+                    val filtered = s.technicians
+                        .filter { tech ->
+                            val hasValidName = tech.name.isNotBlank() &&
+                                               !tech.name.contains("Sem cadastro", ignoreCase = true) &&
+                                               !tech.name.contains("Sem nome", ignoreCase = true) &&
+                                               !tech.name.equals("Nenhum", ignoreCase = true) &&
+                                               !tech.name.equals("João Silva", ignoreCase = true)
+                            val isTecnico = tech.role.equals("Técnico", ignoreCase = true) ||
+                                            tech.role.equals("Ambos", ignoreCase = true) ||
+                                            tech.role.isBlank()
+                            val isNotDuplicate = when {
+                                tech.name.contains("Rodrigo", ignoreCase = true) -> seenRodrigo.add(tech.name)
+                                tech.name.contains("Luiz", ignoreCase = true)    -> seenLuiz.add(tech.name)
+                                else -> true
+                            }
+                            hasValidName && isTecnico && isNotDuplicate &&
+                                (searchQuery.isBlank() || tech.name.contains(searchQuery, ignoreCase = true))
+                        }
 
                     if (filtered.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -365,16 +415,17 @@ private fun TechnicianCard(technician: Technician, onClick: () -> Unit) {
             // Avatar circular com iniciais
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .background(avatarColor.copy(alpha = 0.2f), CircleShape)
-                    .border(1.dp, avatarColor.copy(alpha = 0.5f), CircleShape),
+                    .size(56.dp)
+                    .background(avatarColor.copy(alpha = 0.25f), CircleShape)
+                    .border(2.dp, avatarColor.copy(alpha = 0.8f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = initials,
-                    style = MaterialTheme.typography.titleMedium.copy(
+                    style = MaterialTheme.typography.titleLarge.copy(
                         color = avatarColor,
-                        fontSize = 16.sp
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 20.sp
                     )
                 )
             }
@@ -382,22 +433,28 @@ private fun TechnicianCard(technician: Technician, onClick: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     technician.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 18.sp,
+                        letterSpacing = 0.2.sp
+                    ),
                     color = SicoiTextPrimary
                 )
+                Spacer(modifier = Modifier.height(3.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(6.dp)
+                            .size(8.dp)
                             .background(SicoiSuccess, CircleShape)
                     )
                     Text(
                         technician.status,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
                             color = SicoiSuccess
                         )
                     )
