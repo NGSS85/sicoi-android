@@ -1,5 +1,8 @@
 package br.com.sicoi.mobile.ui.osform
 
+import android.content.pm.PackageManager
+import android.widget.Toast
+import androidx.core.content.ContextCompat
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -71,11 +74,31 @@ fun OSFormScreen(
         photoBitmaps = photoBitmaps + newBitmaps
     }
 
+    // Launcher para fotografar imagens diretamente com a câmera do celular
+    val cameraPhotoLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicturePreview()
+    ) { bitmap: Bitmap? ->
+        bitmap?.let {
+            photoBitmaps = photoBitmaps + it
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            cameraPhotoLauncher.launch(null)
+        } else {
+            Toast.makeText(context, "Permissão de câmera negada", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     LaunchedEffect(workOrderId) {
         viewModel.loadWorkOrder(workOrderId, technicianName)
     }
 
     LaunchedEffect(state) {
+<<<<<<< HEAD
         val currentState = state
         when (currentState) {
             is OSFormUiState.SavedOnline -> {
@@ -86,6 +109,20 @@ fun OSFormScreen(
                 android.widget.Toast.makeText(context, currentState.message, android.widget.Toast.LENGTH_LONG).show()
                 onFinalized()
             }
+=======
+        when (val currentState = state) {
+            is OSFormUiState.SavedOnline -> {
+                Toast.makeText(context, currentState.message, Toast.LENGTH_LONG).show()
+                onFinalized()
+            }
+            is OSFormUiState.SavedOffline -> {
+                Toast.makeText(context, currentState.message, Toast.LENGTH_LONG).show()
+                onFinalized()
+            }
+            is OSFormUiState.Error -> {
+                Toast.makeText(context, currentState.message, Toast.LENGTH_LONG).show()
+            }
+>>>>>>> 1f8b071ff0c33f226bae682e7a3c349b64a98203
             else -> {}
         }
     }
@@ -189,9 +226,14 @@ fun OSFormScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = SicoiTextSecondary)
                     }
 
+<<<<<<< HEAD
                     // Número da OS em destaque no canto direito (ocultado se for uma O.S. nova)
                     val isNewOrder = workOrderId == "new" || workOrderId.isBlank() || workOrderId.startsWith("NEW")
                     val osNumber = if (isNewOrder) "Nova O.S." else ((state as? OSFormUiState.Loaded)?.order?.numeroOs ?: "—")
+=======
+                    // Número da OS em destaque no canto direito (No modo solicitante, indica que será gerado ao salvar)
+                    val osNumber = if (isRequesterMode) "Gerado ao Salvar" else ((state as? OSFormUiState.Loaded)?.order?.numeroOs ?: "—")
+>>>>>>> 1f8b071ff0c33f226bae682e7a3c349b64a98203
                     Surface(
                         shape = RoundedCornerShape(10.dp),
                         color = SicoiOrange.copy(alpha = 0.15f),
@@ -625,7 +667,7 @@ fun OSFormScreen(
                                             )
                                             Spacer(modifier = Modifier.height(8.dp))
 
-                                            // Botão de adicionar fotos
+                                            // Botão 1: Anexar imagens e arquivos da galeria/dispositivo
                                             OutlinedButton(
                                                 onClick = { photoPickerLauncher.launch("image/*") },
                                                 modifier = Modifier.fillMaxWidth(),
@@ -633,10 +675,37 @@ fun OSFormScreen(
                                                 border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.5f)),
                                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = SicoiOrange)
                                             ) {
-                                                Icon(Icons.Default.AddAPhoto, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(18.dp))
                                                 Spacer(modifier = Modifier.width(8.dp))
                                                 Text(
-                                                    "Anexar Foto(s) do Problema",
+                                                    "Anexar imagens e arquivos",
+                                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                                                )
+                                            }
+
+                                            Spacer(modifier = Modifier.height(8.dp))
+
+                                            // Botão 2: Fotografar imagens diretamente pela câmera do celular
+                                            Button(
+                                                onClick = {
+                                                    val permissionCheck = ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA)
+                                                    if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
+                                                        cameraPhotoLauncher.launch(null)
+                                                    } else {
+                                                        cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                                                    }
+                                                },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(10.dp),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = SicoiOrange,
+                                                    contentColor = Color.White
+                                                )
+                                            ) {
+                                                Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    "Fotografar imagens",
                                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                                                 )
                                             }

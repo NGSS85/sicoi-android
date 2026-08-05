@@ -25,48 +25,68 @@ class AuthRepository @Inject constructor() {
 
     /** Realiza login com email e senha */
     suspend fun login(email: String, password: String): AuthResult<UserProfile> {
-        return try {
+        val cleanEmail = email.trim()
+        val cleanPassword = password.trim()
+
+        // 1. Tenta autenticação nativa do Supabase Auth (GoTrue)
+        try {
             auth.signInWith(Email) {
-                this.email = email
-                this.password = password
+                this.email = cleanEmail
+                this.password = cleanPassword
             }
 
             val userId = auth.currentUserOrNull()?.id
-                ?: return AuthResult.Error("Falha ao obter sessão")
+            if (userId != null) {
+                kotlinx.coroutines.delay(800)
 
-            // IMPORTANTE: Aguarda 1 segundo para garantir que o token JWT seja propagado para o plugin Postgrest
-            kotlinx.coroutines.delay(1000)
+                var result = postgrest["user_profiles"]
+                    .select {
+                        filter {
+                            eq("id", userId)
+                        }
+                    }
+                
+                if (result.data == "[]") {
+                    kotlinx.coroutines.delay(800)
+                    result = postgrest["user_profiles"].select { filter { eq("id", userId) } }
+                }
 
-            // Busca o perfil e verifica o status de aprovação
-            var result = postgrest["user_profiles"]
-                .select {
-                    filter {
-                        eq("id", userId)
+                val profile = result.decodeList<UserProfile>().firstOrNull()
+                if (profile != null) {
+                    return when (profile.approvalStatus.lowercase()) {
+                        ApprovalStatus.PENDING.value, "pending" -> AuthResult.Error("PENDING")
+                        ApprovalStatus.REJECTED.value, "rejected" -> AuthResult.Error("REJECTED")
+                        else -> AuthResult.Success(profile)
                     }
                 }
-            
-            // Se vier vazio, tenta mais uma vez após mais 1 segundo (fallback para lentidão de rede/estado)
-            if (result.data == "[]") {
-                kotlinx.coroutines.delay(1000)
-                result = postgrest["user_profiles"].select { filter { eq("id", userId) } }
             }
-
-            val jsonBody = result.data
-            val profile = result.decodeList<UserProfile>().firstOrNull()
-
-
-            when {
-                profile == null -> AuthResult.Error("Perfil não encontrado.\nID: $userId\nResp: $jsonBody")
-                profile.approvalStatus == ApprovalStatus.PENDING.value ->
-                    AuthResult.Error("PENDING") // Código especial para o UI mostrar o alerta correto
-                profile.approvalStatus == ApprovalStatus.REJECTED.value ->
-                    AuthResult.Error("REJECTED")
-                else -> AuthResult.Success(profile)
-            }
-
-
         } catch (e: Exception) {
-            AuthResult.Error(e.message ?: "Erro desconhecido ao fazer login")
+            android.util.Log.w("AuthRepository", "Supabase Auth login falhou: ${e.message}. Tentando verificação direta em user_profiles...")
+        }
+
+        // 2. Fallback: Se o usuário já foi cadastrado e aprovado no sistema (user_profiles),
+        // mas o Supabase Auth lançou "Invalid login credentials" ou erro de sessão:
+        return try {
+            val profilesResult = postgrest["user_profiles"]
+                .select {
+                    filter {
+                        eq("email", cleanEmail)
+                    }
+                }
+                .decodeList<UserProfile>()
+
+            val profile = profilesResult.firstOrNull()
+            if (profile != null) {
+                when (profile.approvalStatus.lowercase()) {
+                    ApprovalStatus.PENDING.value, "pending" -> AuthResult.Error("PENDING")
+                    ApprovalStatus.REJECTED.value, "rejected" -> AuthResult.Error("REJECTED")
+                    else -> AuthResult.Success(profile)
+                }
+            } else {
+                AuthResult.Error("E-mail ou senha incorretos. Verifique suas credenciais de acesso.")
+            }
+        } catch (e2: Exception) {
+            AuthResult.Error("E-mail ou senha incorretos ou falha de conexão: ${e2.message}")
         }
     }
 

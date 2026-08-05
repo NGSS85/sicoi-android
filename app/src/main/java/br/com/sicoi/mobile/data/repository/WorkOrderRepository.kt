@@ -120,6 +120,7 @@ class WorkOrderRepository @Inject constructor(
     }
 
     /**
+<<<<<<< HEAD
      * Cria uma nova Ordem de Serviço (Solicitação) compatível com o sistema web.
      *
      * O insert usa o formato [RQ-11-DIGITAL]: {...} na coluna solucao_aplicada,
@@ -127,6 +128,63 @@ class WorkOrderRepository @Inject constructor(
      * aparece na aba "Ordens de Serviço em Aberto" do dashboard desktop.
      *
      * A coluna asset_id é NOT NULL, então buscamos um ativo existente antes do insert.
+=======
+     * Busca a numeração sequencial unificada para a próxima OS (ex: 001/26, 002/26, 003/26...)
+     * Seguindo exatamente a mesma lógica utilizada no Sistema Desktop.
+     */
+    suspend fun fetchNextOsNumber(): String {
+        return try {
+            val result = postgrest["ind_maint_os"]
+                .select()
+                .decodeList<WorkOrder>()
+
+            val currentYearSuffix = "/${java.text.SimpleDateFormat("yy", java.util.Locale.getDefault()).format(java.util.Date())}"
+            var maxNumber = 0
+
+            result.forEach { os ->
+                // Checa no json solucao_aplicada [RQ-11-DIGITAL]
+                os.solucaoAplicada?.let { sol ->
+                    if (sol.startsWith("[RQ-11-DIGITAL]:")) {
+                        try {
+                            val jsonString = sol.removePrefix("[RQ-11-DIGITAL]:").trim()
+                            val jsonObject = kotlinx.serialization.json.Json.parseToJsonElement(jsonString) as? kotlinx.serialization.json.JsonObject
+                            val osNumStr = (jsonObject?.get("os_number") as? kotlinx.serialization.json.JsonPrimitive)?.content
+
+                            if (!osNumStr.isNullOrEmpty()) {
+                                val numPart = osNumStr.split("/").firstOrNull()?.replace(Regex("[^0-9]"), "")
+                                val num = numPart?.toIntOrNull() ?: 0
+                                if (num > maxNumber) {
+                                    maxNumber = num
+                                }
+                            }
+                        } catch (e: Exception) {
+                            // Ignora erro de parse
+                        }
+                    }
+                }
+                // Checa no campo numeroOs da WorkOrder
+                os.numeroOs?.let { numOs ->
+                    val numPart = numOs.split("/").firstOrNull()?.replace(Regex("[^0-9]"), "")
+                    val num = numPart?.toIntOrNull() ?: 0
+                    if (num > maxNumber) {
+                        maxNumber = num
+                    }
+                }
+            }
+
+            val nextVal = maxNumber + 1
+            String.format(java.util.Locale.getDefault(), "%03d%s", nextVal, currentYearSuffix)
+        } catch (e: Exception) {
+            Log.e("WorkOrderRepo", "Erro ao buscar próximo número de OS: ${e.message}")
+            val yearSuffix = "/${java.text.SimpleDateFormat("yy", java.util.Locale.getDefault()).format(java.util.Date())}"
+            "001$yearSuffix"
+        }
+    }
+
+    /**
+     * Cria uma nova Ordem de Serviço (Solicitação).
+     * Salva no Supabase e no Room offline.
+>>>>>>> 1f8b071ff0c33f226bae682e7a3c349b64a98203
      */
     suspend fun createWorkOrder(order: WorkOrder, isOnline: Boolean = true, photoUrls: List<String> = emptyList()): Result<Unit> {
         // Salva no Room local (sempre, para modo offline também)
