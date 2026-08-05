@@ -131,6 +131,7 @@ class OSFormViewModel @Inject constructor(
         prioridade: String,
         descricaoProblema: String,
         technicianName: String,
+        photoBitmaps: List<Bitmap>,
         onSuccess: () -> Unit
     ) {
         viewModelScope.launch {
@@ -150,7 +151,19 @@ class OSFormViewModel @Inject constructor(
                 descricaoProblema = descricaoProblema,
                 status = "Em Aberto"
             )
-            repository.createWorkOrder(newOrder, isOnline).fold(
+
+            // Upload de fotos anexadas no celular para o Supabase Storage
+            val uploadedUrls = mutableListOf<String>()
+            if (isOnline && photoBitmaps.isNotEmpty()) {
+                photoBitmaps.forEachIndexed { index, bitmap ->
+                    val fileName = "req_${newOrder.id}_${index}.png"
+                    uploadBitmap(bitmap, fileName)?.let { url ->
+                        uploadedUrls.add(url)
+                    }
+                }
+            }
+
+            repository.createWorkOrder(newOrder, isOnline, uploadedUrls).fold(
                 onSuccess = {
                     _state.value = OSFormUiState.SavedOnline("Formulário de Ordem de Serviço enviado com sucesso!")
                     onSuccess()

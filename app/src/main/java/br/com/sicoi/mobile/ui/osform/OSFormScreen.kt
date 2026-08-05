@@ -76,8 +76,16 @@ fun OSFormScreen(
     }
 
     LaunchedEffect(state) {
-        when (state) {
-            is OSFormUiState.SavedOnline, is OSFormUiState.SavedOffline -> onFinalized()
+        val currentState = state
+        when (currentState) {
+            is OSFormUiState.SavedOnline -> {
+                android.widget.Toast.makeText(context, currentState.message, android.widget.Toast.LENGTH_LONG).show()
+                onFinalized()
+            }
+            is OSFormUiState.SavedOffline -> {
+                android.widget.Toast.makeText(context, currentState.message, android.widget.Toast.LENGTH_LONG).show()
+                onFinalized()
+            }
             else -> {}
         }
     }
@@ -108,6 +116,7 @@ fun OSFormScreen(
                                 prioridade = viewModel.prioridadeForm,
                                 descricaoProblema = viewModel.descricaoForm,
                                 technicianName = technicianName,
+                                photoBitmaps = photoBitmaps,
                                 onSuccess = onFinalized
                             )
                         }
@@ -180,8 +189,9 @@ fun OSFormScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = SicoiTextSecondary)
                     }
 
-                    // Número da OS em destaque no canto direito
-                    val osNumber = (state as? OSFormUiState.Loaded)?.order?.numeroOs ?: "—"
+                    // Número da OS em destaque no canto direito (ocultado se for uma O.S. nova)
+                    val isNewOrder = workOrderId == "new" || workOrderId.isBlank() || workOrderId.startsWith("NEW")
+                    val osNumber = if (isNewOrder) "Nova O.S." else ((state as? OSFormUiState.Loaded)?.order?.numeroOs ?: "—")
                     Surface(
                         shape = RoundedCornerShape(10.dp),
                         color = SicoiOrange.copy(alpha = 0.15f),
@@ -193,7 +203,7 @@ fun OSFormScreen(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
-                                Icons.Default.Tag,
+                                if (isNewOrder) Icons.Default.AddCircle else Icons.Default.Tag,
                                 contentDescription = null,
                                 tint = SicoiOrange,
                                 modifier = Modifier.size(14.dp)

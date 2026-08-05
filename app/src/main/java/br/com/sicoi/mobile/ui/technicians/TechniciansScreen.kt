@@ -17,6 +17,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,11 +51,23 @@ class TechniciansViewModel @Inject constructor(
     private val _state = MutableStateFlow<TechniciansUiState>(TechniciansUiState.Loading)
     val state: StateFlow<TechniciansUiState> = _state.asStateFlow()
 
-    init { fetchTechnicians() }
+    private val _requesters = MutableStateFlow<List<Technician>>(emptyList())
+    val requesters: StateFlow<List<Technician>> = _requesters.asStateFlow()
 
-    fun fetchTechnicians() {
+    init {
+        fetchData()
+    }
+
+    fun fetchData() {
         viewModelScope.launch {
             _state.value = TechniciansUiState.Loading
+            
+            // Busca solicitantes em background para validação de PIN direta
+            repository.fetchRequesters().onSuccess {
+                _requesters.value = it
+            }
+
+            // Busca técnicos
             repository.fetchTechnicians().fold(
                 onSuccess = { _state.value = TechniciansUiState.Success(it) },
                 onFailure = { _state.value = TechniciansUiState.Error(it.message ?: "Erro ao carregar técnicos") }
@@ -72,70 +86,22 @@ class TechniciansViewModel @Inject constructor(
 fun TechniciansScreen(
     onNavigateBack: () -> Unit,
     onSelectTechnician: (technicianId: String, technicianName: String) -> Unit,
-    onNavigateToPinList: () -> Unit = {},
+    onNavigateToPinList: (requesterName: String) -> Unit = {},
     viewModel: TechniciansViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    var searchQuery by remember { mutableStateOf("") }
-    
-    var selectedTech by remember { mutableStateOf<Technician?>(null) }
-    var showPinDialog by remember { mutableStateOf(false) }
-    var pinInput by remember { mutableStateOf("") }
-    var pinError by remember { mutableStateOf(false) }
+    val requesters by viewModel.requesters.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
-    if (showPinDialog && selectedTech != null) {
-        AlertDialog(
-            onDismissRequest = { 
-                showPinDialog = false
-                pinInput = ""
-                pinError = false
-            },
-            title = { Text("Acesso Restrito", color = SicoiTextPrimary) },
-            text = {
-                Column {
-                    Text("Digite o PIN para acessar como ${selectedTech!!.name}:", color = SicoiTextSecondary, modifier = Modifier.padding(bottom = 12.dp))
-                    OutlinedTextField(
-                        value = pinInput,
-                        onValueChange = { 
-                            pinInput = it
-                            pinError = false
-                        },
-                        label = { Text("PIN de Acesso") },
-                        isError = pinError,
-                        singleLine = true,
-                        colors = sicoiTextFieldColors()
-                    )
-                    if (pinError) {
-                        Text("PIN incorreto. O padrão é 2839.", color = SicoiError, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 4.dp))
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    if (pinInput == "2839" || pinInput == selectedTech!!.pin) {
-                        showPinDialog = false
-                        pinInput = ""
-                        pinError = false
-                        onSelectTechnician(selectedTech!!.id, selectedTech!!.name)
-                    } else {
-                        pinError = true
-                    }
-                }) {
-                    Text("Entrar", color = SicoiOrange)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { 
-                    showPinDialog = false
-                    pinInput = ""
-                    pinError = false
-                }) {
-                    Text("Cancelar", color = SicoiTextMuted)
-                }
-            },
-            containerColor = SicoiCard
-        )
-    }
+    // Estados do Quadro de PIN do Solicitante
+    var requesterPinInput by remember { mutableStateOf("") }
+    var requesterPinError by remember { mutableStateOf(false) }
+    var requesterPinVisible by remember { mutableStateOf(false) }
+
+    // Estados do Quadro de PIN do Técnico
+    var techPinInput by remember { mutableStateOf("") }
+    var techPinError by remember { mutableStateOf(false) }
+    var techPinVisible by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = SicoiBackground,
@@ -163,7 +129,7 @@ fun TechniciansScreen(
                             Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = SicoiTextSecondary)
                         }
 
-                        IconButton(onClick = { viewModel.fetchTechnicians() }) {
+                        IconButton(onClick = { viewModel.fetchData() }) {
                             Icon(Icons.Default.Refresh, contentDescription = "Atualizar", tint = SicoiTextSecondary)
                         }
                     }
@@ -187,128 +153,18 @@ fun TechniciansScreen(
             }
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Frase instrucional centralizada com setas
-            Spacer(modifier = Modifier.height(10.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    Icons.Default.ArrowBack,
-                    contentDescription = null,
-                    tint = SicoiTextSecondary,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    "Usuarios abrir Formulario",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 15.4.sp,
-                        letterSpacing = 0.3.sp
-                    ),
-                    color = SicoiTextSecondary,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    Icons.Default.ArrowForward,
-                    contentDescription = null,
-                    tint = SicoiTextSecondary,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            // Botão Formulário de OS - fundo branco, texto escuro negrito, largura 85%
-            Button(
-                onClick = onNavigateToPinList,
-                modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = Color(0xFF1A237E)
-                ),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .background(Color(0xFF1A237E).copy(alpha = 0.1f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.Assignment,
-                        contentDescription = null,
-                        tint = Color(0xFF1A237E),
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    "Abrir - Formulário O.S",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    )
-                )
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // 4. Título da Seção
-            Text(
-                "Técnicos, Abaixo",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 26.sp,
-                    letterSpacing = 0.5.sp
-                ),
-                color = SicoiTextPrimary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Barra de busca / Filtro
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text("Buscar técnico...", color = SicoiTextMuted) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = SicoiTextMuted) },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Limpar", tint = SicoiTextMuted)
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                singleLine = true,
-                colors = sicoiTextFieldColors()
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-
             when (val s = state) {
                 is TechniciansUiState.Loading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             CircularProgressIndicator(color = SicoiOrange)
                             Spacer(modifier = Modifier.height(12.dp))
-                            Text("Carregando técnicos...", style = MaterialTheme.typography.bodyMedium, color = SicoiTextMuted)
+                            Text("Carregando dados...", style = MaterialTheme.typography.bodyMedium, color = SicoiTextMuted)
                         }
                     }
                 }
@@ -320,7 +176,7 @@ fun TechniciansScreen(
                             Text(s.message, style = MaterialTheme.typography.bodyMedium, color = SicoiError, textAlign = TextAlign.Center)
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
-                                onClick = { viewModel.fetchTechnicians() },
+                                onClick = { viewModel.fetchData() },
                                 colors = ButtonDefaults.buttonColors(containerColor = SicoiOrange)
                             ) {
                                 Text("Tentar Novamente")
@@ -329,144 +185,237 @@ fun TechniciansScreen(
                     }
                 }
                 is TechniciansUiState.Success -> {
-                    // Remove duplicatas e nomes excluídos
-                    val seenRodrigo = mutableSetOf<String>()
-                    val seenLuiz = mutableSetOf<String>()
-                    val filtered = s.technicians
-                        .filter { tech ->
-                            val hasValidName = tech.name.isNotBlank() &&
-                                               !tech.name.contains("Sem cadastro", ignoreCase = true) &&
-                                               !tech.name.contains("Sem nome", ignoreCase = true) &&
-                                               !tech.name.equals("Nenhum", ignoreCase = true) &&
-                                               !tech.name.equals("João Silva", ignoreCase = true)
-                            val isTecnico = tech.role.equals("Técnico", ignoreCase = true) ||
-                                            tech.role.equals("Ambos", ignoreCase = true) ||
-                                            tech.role.isBlank()
-                            val isNotDuplicate = when {
-                                tech.name.contains("Rodrigo", ignoreCase = true) -> seenRodrigo.add(tech.name)
-                                tech.name.contains("Luiz", ignoreCase = true)    -> seenLuiz.add(tech.name)
-                                else -> true
-                            }
-                            hasValidName && isTecnico && isNotDuplicate &&
-                                (searchQuery.isBlank() || tech.name.contains(searchQuery, ignoreCase = true))
-                        }
+                    val technicians = s.technicians
 
-                    if (filtered.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp)
+                            .verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(20.dp)
+                    ) {
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // ========================================================
+                        // BLOCO 1: ABRIR FORMULÁRIO DE O.S. (SOLICITANTE)
+                        // ========================================================
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Text(
-                                if (searchQuery.isBlank()) "Nenhum técnico cadastrado."
-                                else "Nenhum técnico encontrado para \"$searchQuery\".",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = SicoiTextMuted,
+                                "Abrir Formulario de O.S",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                    letterSpacing = 0.3.sp
+                                ),
+                                color = SicoiTextPrimary,
                                 textAlign = TextAlign.Center
                             )
-                        }
-                    } else {
-                        Text(
-                            "${filtered.size} técnico${if (filtered.size != 1) "s" else ""} disponíve${if (filtered.size != 1) "is" else "l"}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = SicoiTextMuted,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            items(filtered, key = { it.id }) { tech ->
-                                TechnicianCard(
-                                    technician = tech,
-                                    onClick = { 
-                                        selectedTech = tech
-                                        showPinDialog = true
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Card(
+                                modifier = Modifier.fillMaxWidth(0.95f),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = SicoiCard),
+                                border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.3f))
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Text(
+                                        "Digite seu PIN para acessar o formulário:",
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                                        color = SicoiTextSecondary,
+                                        textAlign = TextAlign.Center
+                                    )
+
+                                    OutlinedTextField(
+                                        value = requesterPinInput,
+                                        onValueChange = {
+                                            val digitsOnly = it.filter { c -> c.isDigit() }.take(8)
+                                            requesterPinInput = digitsOnly
+                                            requesterPinError = false
+                                            
+                                            if (digitsOnly.length >= 4) {
+                                                val match = requesters.firstOrNull { r -> r.pin == digitsOnly || (digitsOnly == "2839" && r.pin.isBlank()) }
+                                                if (match != null) {
+                                                    android.widget.Toast.makeText(context, "Bem vindo, ${match.name}!", android.widget.Toast.LENGTH_LONG).show()
+                                                    requesterPinInput = ""
+                                                    requesterPinError = false
+                                                    onNavigateToPinList(match.name)
+                                                }
+                                            }
+                                        },
+                                        label = { Text("PIN do Solicitante") },
+                                        isError = requesterPinError,
+                                        singleLine = true,
+                                        visualTransformation = if (requesterPinVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                        trailingIcon = {
+                                            IconButton(onClick = { requesterPinVisible = !requesterPinVisible }) {
+                                                Icon(
+                                                    if (requesterPinVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                                    contentDescription = null,
+                                                    tint = SicoiTextMuted
+                                                )
+                                            }
+                                        },
+                                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                            keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword
+                                        ),
+                                        colors = sicoiTextFieldColors(),
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+
+                                    if (requesterPinError) {
+                                        Text(
+                                            "PIN inválido ou usuário não cadastrado.",
+                                            color = SicoiError,
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
                                     }
-                                )
+
+                                    Button(
+                                        onClick = {
+                                            val match = requesters.firstOrNull { r -> r.pin == requesterPinInput || (requesterPinInput == "2839" && r.pin.isBlank()) }
+                                            if (match != null) {
+                                                android.widget.Toast.makeText(context, "Bem vindo, ${match.name}!", android.widget.Toast.LENGTH_LONG).show()
+                                                val name = match.name
+                                                requesterPinInput = ""
+                                                requesterPinError = false
+                                                onNavigateToPinList(name)
+                                            } else {
+                                                requesterPinError = true
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = SicoiOrange),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.fillMaxWidth(0.8f)
+                                    ) {
+                                        Text("Acessar Formulário", fontWeight = FontWeight.Bold)
+                                    }
+                                }
                             }
-                            item { Spacer(modifier = Modifier.height(16.dp)) }
                         }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // ========================================================
+                        // BLOCO 2: ATIVIDADES DOS TÉCNICOS (TÉCNICO)
+                        // ========================================================
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                "Atividades dos técnicos",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                    letterSpacing = 0.3.sp
+                                ),
+                                color = SicoiTextPrimary,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Card(
+                                modifier = Modifier.fillMaxWidth(0.95f),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = SicoiCard),
+                                border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.3f))
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Text(
+                                        "Digite seu PIN para acessar suas O.S.:",
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                                        color = SicoiTextSecondary,
+                                        textAlign = TextAlign.Center
+                                    )
+
+                                    OutlinedTextField(
+                                        value = techPinInput,
+                                        onValueChange = {
+                                            val digitsOnly = it.filter { c -> c.isDigit() }.take(8)
+                                            techPinInput = digitsOnly
+                                            techPinError = false
+                                            
+                                            if (digitsOnly.length >= 4) {
+                                                val match = technicians.firstOrNull { t -> t.pin == digitsOnly || (digitsOnly == "2839" && t.pin.isBlank()) }
+                                                if (match != null) {
+                                                    android.widget.Toast.makeText(context, "Bem vindo, ${match.name}!", android.widget.Toast.LENGTH_LONG).show()
+                                                    techPinInput = ""
+                                                    techPinError = false
+                                                    onSelectTechnician(match.id, match.name)
+                                                }
+                                            }
+                                        },
+                                        label = { Text("PIN do Técnico") },
+                                        isError = techPinError,
+                                        singleLine = true,
+                                        visualTransformation = if (techPinVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                                        trailingIcon = {
+                                            IconButton(onClick = { techPinVisible = !techPinVisible }) {
+                                                Icon(
+                                                    if (techPinVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                                    contentDescription = null,
+                                                    tint = SicoiTextMuted
+                                                )
+                                            }
+                                        },
+                                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                            keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword
+                                        ),
+                                        colors = sicoiTextFieldColors(),
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+
+                                    if (techPinError) {
+                                        Text(
+                                            "PIN inválido ou técnico não cadastrado.",
+                                            color = SicoiError,
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            val match = technicians.firstOrNull { t -> t.pin == techPinInput || (techPinInput == "2839" && t.pin.isBlank()) }
+                                            if (match != null) {
+                                                android.widget.Toast.makeText(context, "Bem vindo, ${match.name}!", android.widget.Toast.LENGTH_LONG).show()
+                                                val id = match.id
+                                                val name = match.name
+                                                techPinInput = ""
+                                                techPinError = false
+                                                onSelectTechnician(id, name)
+                                            } else {
+                                                techPinError = true
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = SicoiOrange),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.fillMaxWidth(0.8f)
+                                    ) {
+                                        Text("Acessar Atividades", fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun TechnicianCard(technician: Technician, onClick: () -> Unit) {
-    // Gera uma cor de avatar baseada no nome
-    val avatarColor = remember(technician.name) {
-        val colors = listOf(SicoiOrange, SicoiBlue, SicoiSuccess, SicoiWarning, Color(0xFFE879F9))
-        colors[technician.name.length % colors.size]
-    }
-    val initials = technician.name.split(" ")
-        .take(2)
-        .mapNotNull { it.firstOrNull()?.uppercaseChar() }
-        .joinToString("")
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SicoiCard),
-        border = BorderStroke(1.dp, SicoiCardBorder)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Avatar circular com iniciais
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(avatarColor.copy(alpha = 0.25f), CircleShape)
-                    .border(2.dp, avatarColor.copy(alpha = 0.8f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = initials,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        color = avatarColor,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 20.sp
-                    )
-                )
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    technician.name,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 18.sp,
-                        letterSpacing = 0.2.sp
-                    ),
-                    color = SicoiTextPrimary
-                )
-                Spacer(modifier = Modifier.height(3.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(SicoiSuccess, CircleShape)
-                    )
-                    Text(
-                        technician.status,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = SicoiSuccess
-                        )
-                    )
-                }
-            }
-
-            Icon(
-                Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = SicoiOrange,
-                modifier = Modifier.size(22.dp)
-            )
         }
     }
 }

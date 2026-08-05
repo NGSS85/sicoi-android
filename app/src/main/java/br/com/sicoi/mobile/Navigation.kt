@@ -15,9 +15,6 @@ import br.com.sicoi.mobile.ui.osform.OSFormScreen
 import br.com.sicoi.mobile.ui.technicians.TechniciansScreen
 import br.com.sicoi.mobile.ui.workorders.WorkOrdersScreen
 
-
-import br.com.sicoi.mobile.ui.technicians.TechniciansPinScreen
-
 /**
  * Grafo de navegação do SICOI Mobile.
  *
@@ -122,18 +119,8 @@ fun SicoiNavGraph(
                 onSelectTechnician = { techId, techName ->
                     navController.navigate(Routes.workOrders(techId, techName))
                 },
-                onNavigateToPinList = {
-                    navController.navigate(Routes.TECHNICIANS_PIN)
-                }
-            )
-        }
-
-        // ── Tela 3.1: Lista de Técnicos com PIN ───────────────────────────
-        composable(Routes.TECHNICIANS_PIN) {
-            TechniciansPinScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onSelectTechnician = { _, techName ->
-                    navController.navigate(Routes.osFormRequester("new", techName))
+                onNavigateToPinList = { requesterName ->
+                    navController.navigate(Routes.osFormRequester("new", requesterName))
                 }
             )
         }
