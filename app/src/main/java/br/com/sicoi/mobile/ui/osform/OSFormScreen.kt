@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import br.com.sicoi.mobile.ui.login.sicoiTextFieldColors
+import br.com.sicoi.mobile.data.model.*
 import br.com.sicoi.mobile.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -61,6 +62,9 @@ fun OSFormScreen(
 
     // Fotos dos solicitante (lista de bitmaps)
     var photoBitmaps by remember { mutableStateOf<List<Bitmap>>(emptyList()) }
+    var servicePhotoBitmaps by remember { mutableStateOf<List<Bitmap>>(emptyList()) }
+    var materialPhotoBitmaps by remember { mutableStateOf<List<Bitmap>>(emptyList()) }
+    var activeAttachmentSection by remember { mutableStateOf("requester") }
 
     // Launcher para selecionar múltiplas fotos da galeria
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -71,7 +75,11 @@ fun OSFormScreen(
                 BitmapFactory.decodeStream(it)
             }
         }
-        photoBitmaps = photoBitmaps + newBitmaps
+        when (activeAttachmentSection) {
+            "requester" -> photoBitmaps = photoBitmaps + newBitmaps
+            "service" -> servicePhotoBitmaps = servicePhotoBitmaps + newBitmaps
+            "material" -> materialPhotoBitmaps = materialPhotoBitmaps + newBitmaps
+        }
     }
 
     // Launcher para fotografar imagens diretamente com a câmera do celular
@@ -79,7 +87,11 @@ fun OSFormScreen(
         ActivityResultContracts.TakePicturePreview()
     ) { bitmap: Bitmap? ->
         bitmap?.let {
-            photoBitmaps = photoBitmaps + it
+            when (activeAttachmentSection) {
+                "requester" -> photoBitmaps = photoBitmaps + it
+                "service" -> servicePhotoBitmaps = servicePhotoBitmaps + it
+                "material" -> materialPhotoBitmaps = materialPhotoBitmaps + it
+            }
         }
     }
 
@@ -98,18 +110,6 @@ fun OSFormScreen(
     }
 
     LaunchedEffect(state) {
-<<<<<<< HEAD
-        val currentState = state
-        when (currentState) {
-            is OSFormUiState.SavedOnline -> {
-                android.widget.Toast.makeText(context, currentState.message, android.widget.Toast.LENGTH_LONG).show()
-                onFinalized()
-            }
-            is OSFormUiState.SavedOffline -> {
-                android.widget.Toast.makeText(context, currentState.message, android.widget.Toast.LENGTH_LONG).show()
-                onFinalized()
-            }
-=======
         when (val currentState = state) {
             is OSFormUiState.SavedOnline -> {
                 Toast.makeText(context, currentState.message, Toast.LENGTH_LONG).show()
@@ -122,7 +122,6 @@ fun OSFormScreen(
             is OSFormUiState.Error -> {
                 Toast.makeText(context, currentState.message, Toast.LENGTH_LONG).show()
             }
->>>>>>> 1f8b071ff0c33f226bae682e7a3c349b64a98203
             else -> {}
         }
     }
@@ -146,16 +145,25 @@ fun OSFormScreen(
                     onClick = {
                         showConfirmDialog = false
                         (state as? OSFormUiState.Loaded)?.let { loaded ->
-                            viewModel.createRequesterWorkOrder(
-                                solicitante = viewModel.solicitanteForm,
-                                equipamento = viewModel.equipamentoForm,
-                                setor = "",
-                                prioridade = viewModel.prioridadeForm,
-                                descricaoProblema = viewModel.descricaoForm,
-                                technicianName = technicianName,
-                                photoBitmaps = photoBitmaps,
-                                onSuccess = onFinalized
-                            )
+                            if (isRequesterMode) {
+                                viewModel.createRequesterWorkOrder(
+                                    solicitante = viewModel.solicitanteForm,
+                                    equipamento = viewModel.equipamentoForm,
+                                    setor = "",
+                                    prioridade = viewModel.prioridadeForm,
+                                    descricaoProblema = viewModel.descricaoForm,
+                                    technicianName = technicianName,
+                                    photoBitmaps = photoBitmaps,
+                                    onSuccess = onFinalized
+                                )
+                            } else {
+                                viewModel.finalizeWorkOrder(
+                                    technicianName = technicianName,
+                                    serviceBitmaps = servicePhotoBitmaps,
+                                    materialBitmaps = materialPhotoBitmaps,
+                                    onSuccess = onFinalized
+                                )
+                            }
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = SicoiSuccess)
@@ -226,14 +234,15 @@ fun OSFormScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = SicoiTextSecondary)
                     }
 
-<<<<<<< HEAD
-                    // Número da OS em destaque no canto direito (ocultado se for uma O.S. nova)
+                    // Número da OS em destaque no canto direito
                     val isNewOrder = workOrderId == "new" || workOrderId.isBlank() || workOrderId.startsWith("NEW")
-                    val osNumber = if (isNewOrder) "Nova O.S." else ((state as? OSFormUiState.Loaded)?.order?.numeroOs ?: "—")
-=======
-                    // Número da OS em destaque no canto direito (No modo solicitante, indica que será gerado ao salvar)
-                    val osNumber = if (isRequesterMode) "Gerado ao Salvar" else ((state as? OSFormUiState.Loaded)?.order?.numeroOs ?: "—")
->>>>>>> 1f8b071ff0c33f226bae682e7a3c349b64a98203
+                    val osNumber = if (isRequesterMode) {
+                        "Gerado ao Salvar"
+                    } else if (isNewOrder) {
+                        "Nova O.S."
+                    } else {
+                        ((state as? OSFormUiState.Loaded)?.order?.numeroOs ?: "—")
+                    }
                     Surface(
                         shape = RoundedCornerShape(10.dp),
                         color = SicoiOrange.copy(alpha = 0.15f),
@@ -278,7 +287,7 @@ fun OSFormScreen(
                         )
                     )
                     Text(
-                        "Formulário do Solicitante",
+                        if (isRequesterMode) "Formulário do Solicitante" else "Formulario do Técnico",
                         style = MaterialTheme.typography.headlineSmall.copy(
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 20.sp,
@@ -325,37 +334,38 @@ fun OSFormScreen(
                         .fillMaxSize()
                         .padding(paddingValues)
                 ) {
-                    // ─── Abas ─────────────────────────────────────────────
-                    val tabs = listOf("Dados do Solicitante", "Dados do Equipamento")
-                    TabRow(
-                        selectedTabIndex = selectedTabIndex,
-                        containerColor = SicoiSurface,
-                        contentColor = SicoiOrange,
-                        indicator = { tabPositions ->
-                            TabRowDefaults.SecondaryIndicator(
-                                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                                color = SicoiOrange
-                            )
-                        }
-                    ) {
-                        tabs.forEachIndexed { index, title ->
-                            Tab(
-                                selected = selectedTabIndex == index,
-                                onClick = { selectedTabIndex = index },
-                                text = {
-                                    Text(
-                                        title,
-                                        style = MaterialTheme.typography.labelMedium.copy(
-                                            fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
-                                            fontSize = 12.sp
-                                        ),
-                                        color = if (selectedTabIndex == index) SicoiOrange else SicoiTextMuted
-                                    )
-                                }
-                            )
+                    if (isRequesterMode) {
+                        // ─── Abas ─────────────────────────────────────────────
+                        val tabs = listOf("Dados do Solicitante", "Dados do Equipamento")
+                        TabRow(
+                            selectedTabIndex = selectedTabIndex,
+                            containerColor = SicoiSurface,
+                            contentColor = SicoiOrange,
+                            indicator = { tabPositions ->
+                                TabRowDefaults.SecondaryIndicator(
+                                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
+                                    color = SicoiOrange
+                                )
+                            }
+                        ) {
+                            tabs.forEachIndexed { index, title ->
+                                Tab(
+                                    selected = selectedTabIndex == index,
+                                    onClick = { selectedTabIndex = index },
+                                    text = {
+                                        Text(
+                                            title,
+                                            style = MaterialTheme.typography.labelMedium.copy(
+                                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
+                                                fontSize = 12.sp
+                                            ),
+                                            color = if (selectedTabIndex == index) SicoiOrange else SicoiTextMuted
+                                        )
+                                    }
+                                )
+                            }
                         }
                     }
-
                     // ─── Conteúdo das Abas ────────────────────────────────
                     Column(
                         modifier = Modifier
@@ -364,400 +374,402 @@ fun OSFormScreen(
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        when (selectedTabIndex) {
-
-                            // ══════════════════════════════════════════════
-                            // ABA 0: Dados do Solicitante
-                            // ══════════════════════════════════════════════
-                            0 -> {
-                                Card(
-                                    shape = RoundedCornerShape(16.dp),
-                                    colors = CardDefaults.cardColors(containerColor = SicoiCard),
-                                    border = BorderStroke(1.dp, SicoiSuccess.copy(alpha = 0.3f))
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(16.dp),
-                                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                        if (isRequesterMode) {
+                            when (selectedTabIndex) {
+                                // ══════════════════════════════════════════════
+                                // ABA 0: Dados do Solicitante
+                                // ══════════════════════════════════════════════
+                                0 -> {
+                                    Card(
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = CardDefaults.cardColors(containerColor = SicoiCard),
+                                        border = BorderStroke(1.dp, SicoiSuccess.copy(alpha = 0.3f))
                                     ) {
-                                        // Cabeçalho da seção
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                            modifier = Modifier.padding(bottom = 4.dp)
+                                        Column(
+                                            modifier = Modifier.padding(16.dp),
+                                            verticalArrangement = Arrangement.spacedBy(14.dp)
                                         ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(38.dp)
-                                                    .background(SicoiSuccess.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
-                                                contentAlignment = Alignment.Center
+                                            // Cabeçalho da seção
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                                modifier = Modifier.padding(bottom = 4.dp)
                                             ) {
-                                                Icon(Icons.Default.Person, contentDescription = null, tint = SicoiSuccess, modifier = Modifier.size(20.dp))
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(38.dp)
+                                                        .background(SicoiSuccess.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(Icons.Default.Person, contentDescription = null, tint = SicoiSuccess, modifier = Modifier.size(20.dp))
+                                                }
+                                                Column {
+                                                    Text("Dados do Solicitante", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
+                                                    Text("Quem está abrindo a ordem de serviço", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
+                                                }
                                             }
-                                            Column {
-                                                Text("Dados do Solicitante", style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.6.sp), color = SicoiTextPrimary)
-                                                Text("Quem está solicitando a O.S.", style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.2.sp), color = SicoiTextMuted)
-                                            }
+
+                                            HorizontalDivider(color = SicoiDivider)
+
+                                            // Solicitante
+                                            EditableOSField(
+                                                label = "Nome do Solicitante *",
+                                                value = viewModel.solicitanteForm,
+                                                onValueChange = { viewModel.solicitanteForm = it },
+                                                placeholder = "Ex: João Silva",
+                                                icon = Icons.Default.Person,
+                                                isTab0 = true
+                                            )
                                         }
-
-                                        HorizontalDivider(color = SicoiDivider)
-
-                                        // Nome do Solicitante
-                                        EditableOSField(
-                                            label = "Nome do Solicitante *",
-                                            value = viewModel.solicitanteForm,
-                                            onValueChange = { viewModel.solicitanteForm = it },
-                                            placeholder = "Digite seu nome completo...",
-                                            icon = Icons.Default.Person,
-                                            isTab0 = true
-                                        )
-
-                                        // Data (somente leitura — preenchida automaticamente)
-                                        val today = remember {
-                                            SimpleDateFormat("dd/MM/yyyy", Locale("pt", "BR")).format(Date())
-                                        }
-                                        ReadOnlyOSField(
-                                            label = "Data da Solicitação (automático)",
-                                            value = today,
-                                            icon = Icons.Default.CalendarToday,
-                                            isTab0 = true
-                                        )
-
-                                        // Hora (somente leitura — preenchida automaticamente)
-                                        val currentTime = remember {
-                                            SimpleDateFormat("HH:mm", Locale("pt", "BR")).format(Date())
-                                        }
-                                        ReadOnlyOSField(
-                                            label = "Hora (automático ao salvar)",
-                                            value = currentTime,
-                                            icon = Icons.Default.AccessTime,
-                                            isTab0 = true
-                                        )
                                     }
                                 }
-                            }
 
-                            // ══════════════════════════════════════════════
-                            // ABA 1: Dados do Equipamento
-                            // ══════════════════════════════════════════════
-                            1 -> {
-                                Card(
-                                    shape = RoundedCornerShape(16.dp),
-                                    colors = CardDefaults.cardColors(containerColor = SicoiCard),
-                                    border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.3f))
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(16.dp),
-                                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                                // ══════════════════════════════════════════════
+                                // ABA 1: Dados do Equipamento
+                                // ══════════════════════════════════════════════
+                                1 -> {
+                                    Card(
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = CardDefaults.cardColors(containerColor = SicoiCard),
+                                        border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.3f))
                                     ) {
-                                        // Cabeçalho da seção
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                            modifier = Modifier.padding(bottom = 4.dp)
+                                        Column(
+                                            modifier = Modifier.padding(16.dp),
+                                            verticalArrangement = Arrangement.spacedBy(14.dp)
                                         ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(38.dp)
-                                                    .background(SicoiOrange.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
-                                                contentAlignment = Alignment.Center
+                                            // Cabeçalho da seção
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                                modifier = Modifier.padding(bottom = 4.dp)
                                             ) {
-                                                Icon(Icons.Default.Build, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(20.dp))
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(38.dp)
+                                                        .background(SicoiOrange.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(Icons.Default.Build, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(20.dp))
+                                                }
+                                                Column {
+                                                    Text("Dados do Equipamento", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
+                                                    Text("Informações do ativo e ocorrência", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
+                                                }
                                             }
+
+                                            HorizontalDivider(color = SicoiDivider)
+
+                                            // Equipamento
+                                            EditableOSField(
+                                                label = "Equipamento *",
+                                                value = viewModel.equipamentoForm,
+                                                onValueChange = { viewModel.equipamentoForm = it },
+                                                placeholder = "Ex: Prensa Hidráulica 50T",
+                                                icon = Icons.Default.Settings
+                                            )
+
+                                            // Número do Patrimônio
+                                            EditableOSField(
+                                                label = "Número do Patrimônio",
+                                                value = viewModel.patrimonioForm,
+                                                onValueChange = { viewModel.patrimonioForm = it },
+                                                placeholder = "Ex: PAT-00123",
+                                                icon = Icons.Default.Tag
+                                            )
+
+                                            // Prioridade — Seleção com chips
                                             Column {
-                                                Text("Dados do Equipamento", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
-                                                Text("Informações do ativo e ocorrência", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
-                                            }
-                                        }
-
-                                        HorizontalDivider(color = SicoiDivider)
-
-                                        // Equipamento
-                                        EditableOSField(
-                                            label = "Equipamento *",
-                                            value = viewModel.equipamentoForm,
-                                            onValueChange = { viewModel.equipamentoForm = it },
-                                            placeholder = "Ex: Prensa Hidráulica 50T",
-                                            icon = Icons.Default.Settings
-                                        )
-
-                                        // Número do Patrimônio
-                                        EditableOSField(
-                                            label = "Número do Patrimônio",
-                                            value = viewModel.patrimonioForm,
-                                            onValueChange = { viewModel.patrimonioForm = it },
-                                            placeholder = "Ex: PAT-00123",
-                                            icon = Icons.Default.Tag
-                                        )
-
-                                        // Prioridade — Seleção com chips
-                                        Column {
-                                            Text(
-                                                "Prioridade *",
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    color = SicoiTextSecondary,
-                                                    letterSpacing = 0.5.sp
-                                                )
-                                            )
-                                            Spacer(modifier = Modifier.height(6.dp))
-                                            Row(
-                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                                modifier = Modifier.fillMaxWidth()
-                                            ) {
-                                                listOf(
-                                                    "Emergência" to SicoiError,
-                                                    "Urgente" to SicoiWarning,
-                                                    "Normal" to SicoiSuccess
-                                                ).forEach { (label, color) ->
-                                                    val isSelected = viewModel.prioridadeForm == label
-                                                    FilterChip(
-                                                        selected = isSelected,
-                                                        onClick = { viewModel.prioridadeForm = label },
-                                                        label = {
-                                                            Text(
-                                                                label,
-                                                                style = MaterialTheme.typography.labelMedium.copy(
-                                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                                                )
-                                                            )
-                                                        },
-                                                        colors = FilterChipDefaults.filterChipColors(
-                                                            selectedContainerColor = color.copy(alpha = 0.2f),
-                                                            selectedLabelColor = color,
-                                                            containerColor = SicoiSurface,
-                                                            labelColor = SicoiTextMuted
-                                                        ),
-                                                        border = FilterChipDefaults.filterChipBorder(
-                                                            enabled = true,
-                                                            selected = isSelected,
-                                                            selectedBorderColor = color.copy(alpha = 0.5f),
-                                                            borderColor = SicoiCardBorder
-                                                        ),
-                                                        modifier = Modifier.weight(1f)
-                                                    )
-                                                }
-                                            }
-                                        }
-
-                                        // Tipo de Manutenção — Seleção múltipla com chips
-                                        Column {
-                                            Text(
-                                                "Tipo de Manutenção *",
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    color = SicoiTextSecondary,
-                                                    letterSpacing = 0.5.sp
-                                                )
-                                            )
-                                            Spacer(modifier = Modifier.height(6.dp))
-                                            val tiposManutencao = listOf("Mecânica", "Elétrica", "Hidráulica", "Pneumática")
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                            ) {
-                                                tiposManutencao.take(2).forEach { tipo ->
-                                                    val isSelected = viewModel.tiposManutencaoForm.contains(tipo)
-                                                    FilterChip(
-                                                        selected = isSelected,
-                                                        onClick = {
-                                                            viewModel.tiposManutencaoForm = if (isSelected)
-                                                                viewModel.tiposManutencaoForm - tipo
-                                                            else
-                                                                viewModel.tiposManutencaoForm + tipo
-                                                        },
-                                                        label = {
-                                                            Text(
-                                                                tipo,
-                                                                style = MaterialTheme.typography.labelMedium.copy(
-                                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                                                    fontSize = 11.sp
-                                                                )
-                                                            )
-                                                        },
-                                                        colors = FilterChipDefaults.filterChipColors(
-                                                            selectedContainerColor = SicoiBlue.copy(alpha = 0.2f),
-                                                            selectedLabelColor = SicoiBlueLight,
-                                                            containerColor = SicoiSurface,
-                                                            labelColor = SicoiTextMuted
-                                                        ),
-                                                        border = FilterChipDefaults.filterChipBorder(
-                                                            enabled = true,
-                                                            selected = isSelected,
-                                                            selectedBorderColor = SicoiBlue.copy(alpha = 0.5f),
-                                                            borderColor = SicoiCardBorder
-                                                        ),
-                                                        modifier = Modifier.weight(1f)
-                                                    )
-                                                }
-                                            }
-                                            Spacer(modifier = Modifier.height(6.dp))
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                            ) {
-                                                tiposManutencao.drop(2).forEach { tipo ->
-                                                    val isSelected = viewModel.tiposManutencaoForm.contains(tipo)
-                                                    FilterChip(
-                                                        selected = isSelected,
-                                                        onClick = {
-                                                            viewModel.tiposManutencaoForm = if (isSelected)
-                                                                viewModel.tiposManutencaoForm - tipo
-                                                            else
-                                                                viewModel.tiposManutencaoForm + tipo
-                                                        },
-                                                        label = {
-                                                            Text(
-                                                                tipo,
-                                                                style = MaterialTheme.typography.labelMedium.copy(
-                                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                                                    fontSize = 11.sp
-                                                                )
-                                                            )
-                                                        },
-                                                        colors = FilterChipDefaults.filterChipColors(
-                                                            selectedContainerColor = SicoiBlue.copy(alpha = 0.2f),
-                                                            selectedLabelColor = SicoiBlueLight,
-                                                            containerColor = SicoiSurface,
-                                                            labelColor = SicoiTextMuted
-                                                        ),
-                                                        border = FilterChipDefaults.filterChipBorder(
-                                                            enabled = true,
-                                                            selected = isSelected,
-                                                            selectedBorderColor = SicoiBlue.copy(alpha = 0.5f),
-                                                            borderColor = SicoiCardBorder
-                                                        ),
-                                                        modifier = Modifier.weight(1f)
-                                                    )
-                                                }
-                                            }
-                                        }
-
-                                        // Descrição do Problema
-                                        Column {
-                                            Text(
-                                                "Descrição do Problema *",
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    color = SicoiTextSecondary,
-                                                    letterSpacing = 0.5.sp
-                                                )
-                                            )
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            OutlinedTextField(
-                                                value = viewModel.descricaoForm,
-                                                onValueChange = { viewModel.descricaoForm = it },
-                                                placeholder = {
-                                                    Text(
-                                                        "Descreva detalhadamente o problema ou falha observada...",
-                                                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, color = SicoiTextMuted)
-                                                    )
-                                                },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                shape = RoundedCornerShape(10.dp),
-                                                minLines = 4,
-                                                colors = sicoiTextFieldColors()
-                                            )
-                                        }
-
-                                        // Seção de Anexo de Fotos
-                                        Column {
-                                            Text(
-                                                "Fotos do Problema (Opcional)",
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    color = SicoiTextSecondary,
-                                                    letterSpacing = 0.5.sp
-                                                )
-                                            )
-                                            Spacer(modifier = Modifier.height(8.dp))
-
-                                            // Botão 1: Anexar imagens e arquivos da galeria/dispositivo
-                                            OutlinedButton(
-                                                onClick = { photoPickerLauncher.launch("image/*") },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                shape = RoundedCornerShape(10.dp),
-                                                border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.5f)),
-                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = SicoiOrange)
-                                            ) {
-                                                Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(18.dp))
-                                                Spacer(modifier = Modifier.width(8.dp))
                                                 Text(
-                                                    "Anexar imagens e arquivos",
-                                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                                                    "Prioridade *",
+                                                    style = MaterialTheme.typography.labelSmall.copy(
+                                                        color = SicoiTextSecondary,
+                                                        letterSpacing = 0.5.sp
+                                                    )
                                                 )
-                                            }
-
-                                            Spacer(modifier = Modifier.height(8.dp))
-
-                                            // Botão 2: Fotografar imagens diretamente pela câmera do celular
-                                            Button(
-                                                onClick = {
-                                                    val permissionCheck = ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA)
-                                                    if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
-                                                        cameraPhotoLauncher.launch(null)
-                                                    } else {
-                                                        cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                                Row(
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    listOf(
+                                                        "Emergência" to SicoiError,
+                                                        "Urgente" to SicoiWarning,
+                                                        "Normal" to SicoiSuccess
+                                                    ).forEach { (label, color) ->
+                                                        val isSelected = viewModel.prioridadeForm == label
+                                                        FilterChip(
+                                                            selected = isSelected,
+                                                            onClick = { viewModel.prioridadeForm = label },
+                                                            label = {
+                                                                Text(
+                                                                    label,
+                                                                    style = MaterialTheme.typography.labelMedium.copy(
+                                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                                                    )
+                                                                )
+                                                            },
+                                                            colors = FilterChipDefaults.filterChipColors(
+                                                                selectedContainerColor = color.copy(alpha = 0.2f),
+                                                                selectedLabelColor = color,
+                                                                containerColor = SicoiSurface,
+                                                                labelColor = SicoiTextMuted
+                                                            ),
+                                                            border = FilterChipDefaults.filterChipBorder(
+                                                                enabled = true,
+                                                                selected = isSelected,
+                                                                selectedBorderColor = color.copy(alpha = 0.5f),
+                                                                borderColor = SicoiCardBorder
+                                                            ),
+                                                            modifier = Modifier.weight(1f)
+                                                        )
                                                     }
-                                                },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                shape = RoundedCornerShape(10.dp),
-                                                colors = ButtonDefaults.buttonColors(
-                                                    containerColor = SicoiOrange,
-                                                    contentColor = Color.White
-                                                )
-                                            ) {
-                                                Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
-                                                Spacer(modifier = Modifier.width(8.dp))
+                                                }
+                                            }
+
+                                            // Tipo de Manutenção — Seleção múltipla com chips
+                                            Column {
                                                 Text(
-                                                    "Fotografar imagens",
-                                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                                                    "Tipo de Manutenção *",
+                                                    style = MaterialTheme.typography.labelSmall.copy(
+                                                        color = SicoiTextSecondary,
+                                                        letterSpacing = 0.5.sp
+                                                    )
+                                                )
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                                val tiposManutencao = listOf("Mecânica", "Elétrica", "Hidráulica", "Pneumática")
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                ) {
+                                                    tiposManutencao.take(2).forEach { tipo ->
+                                                        val isSelected = viewModel.tiposManutencaoForm.contains(tipo)
+                                                        FilterChip(
+                                                            selected = isSelected,
+                                                            onClick = {
+                                                                viewModel.tiposManutencaoForm = if (isSelected)
+                                                                    viewModel.tiposManutencaoForm - tipo
+                                                                else
+                                                                    viewModel.tiposManutencaoForm + tipo
+                                                            },
+                                                            label = {
+                                                                Text(
+                                                                    tipo,
+                                                                    style = MaterialTheme.typography.labelMedium.copy(
+                                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                                        fontSize = 11.sp
+                                                                    )
+                                                                )
+                                                            },
+                                                            colors = FilterChipDefaults.filterChipColors(
+                                                                selectedContainerColor = SicoiBlue.copy(alpha = 0.2f),
+                                                                selectedLabelColor = SicoiBlueLight,
+                                                                containerColor = SicoiSurface,
+                                                                labelColor = SicoiTextMuted
+                                                            ),
+                                                            border = FilterChipDefaults.filterChipBorder(
+                                                                enabled = true,
+                                                                selected = isSelected,
+                                                                selectedBorderColor = SicoiBlue.copy(alpha = 0.5f),
+                                                                borderColor = SicoiCardBorder
+                                                            ),
+                                                            modifier = Modifier.weight(1f)
+                                                        )
+                                                    }
+                                                }
+                                                Spacer(modifier = Modifier.height(6.dp))
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                ) {
+                                                    tiposManutencao.drop(2).forEach { tipo ->
+                                                        val isSelected = viewModel.tiposManutencaoForm.contains(tipo)
+                                                        FilterChip(
+                                                            selected = isSelected,
+                                                            onClick = {
+                                                                viewModel.tiposManutencaoForm = if (isSelected)
+                                                                    viewModel.tiposManutencaoForm - tipo
+                                                                else
+                                                                    viewModel.tiposManutencaoForm + tipo
+                                                            },
+                                                            label = {
+                                                                Text(
+                                                                    tipo,
+                                                                    style = MaterialTheme.typography.labelMedium.copy(
+                                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                                        fontSize = 11.sp
+                                                                    )
+                                                                )
+                                                            },
+                                                            colors = FilterChipDefaults.filterChipColors(
+                                                                selectedContainerColor = SicoiBlue.copy(alpha = 0.2f),
+                                                                selectedLabelColor = SicoiBlueLight,
+                                                                containerColor = SicoiSurface,
+                                                                labelColor = SicoiTextMuted
+                                                            ),
+                                                            border = FilterChipDefaults.filterChipBorder(
+                                                                enabled = true,
+                                                                selected = isSelected,
+                                                                selectedBorderColor = SicoiBlue.copy(alpha = 0.5f),
+                                                                borderColor = SicoiCardBorder
+                                                            ),
+                                                            modifier = Modifier.weight(1f)
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                            // Descrição do Problema
+                                            Column {
+                                                Text(
+                                                    "Descrição do Problema *",
+                                                    style = MaterialTheme.typography.labelSmall.copy(
+                                                        color = SicoiTextSecondary,
+                                                        letterSpacing = 0.5.sp
+                                                    )
+                                                )
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                OutlinedTextField(
+                                                    value = viewModel.descricaoForm,
+                                                    onValueChange = { viewModel.descricaoForm = it },
+                                                    placeholder = {
+                                                        Text(
+                                                            "Descreva detalhadamente o problema ou falha observada...",
+                                                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, color = SicoiTextMuted)
+                                                        )
+                                                    },
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    shape = RoundedCornerShape(10.dp),
+                                                    minLines = 4,
+                                                    colors = sicoiTextFieldColors()
                                                 )
                                             }
 
-                                            // Miniaturas das fotos selecionadas
-                                            if (photoBitmaps.isNotEmpty()) {
+                                            // Seção de Anexo de Fotos
+                                            Column {
+                                                Text(
+                                                    "Fotos do Problema (Opcional)",
+                                                    style = MaterialTheme.typography.labelSmall.copy(
+                                                        color = SicoiTextSecondary,
+                                                        letterSpacing = 0.5.sp
+                                                    )
+                                                )
                                                 Spacer(modifier = Modifier.height(8.dp))
-                                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                    items(photoBitmaps.size) { index ->
-                                                        Box(
-                                                            modifier = Modifier.size(72.dp)
-                                                        ) {
-                                                            Image(
-                                                                bitmap = photoBitmaps[index].asImageBitmap(),
-                                                                contentDescription = "Foto ${index + 1}",
-                                                                contentScale = ContentScale.Crop,
-                                                                modifier = Modifier
-                                                                    .fillMaxSize()
-                                                                    .clip(RoundedCornerShape(10.dp))
-                                                                    .border(1.dp, SicoiCardBorder, RoundedCornerShape(10.dp))
-                                                            )
-                                                            // Botão de remover
-                                                            IconButton(
-                                                                onClick = {
-                                                                    photoBitmaps = photoBitmaps.toMutableList().also { it.removeAt(index) }
-                                                                },
-                                                                modifier = Modifier
-                                                                    .align(Alignment.TopEnd)
-                                                                    .size(20.dp)
-                                                                    .background(SicoiError.copy(alpha = 0.85f), CircleShape)
+
+                                                // Botão 1: Anexar imagens e arquivos da galeria/dispositivo
+                                                OutlinedButton(
+                                                    onClick = { photoPickerLauncher.launch("image/*") },
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    shape = RoundedCornerShape(10.dp),
+                                                    border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.5f)),
+                                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = SicoiOrange)
+                                                ) {
+                                                    Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Text(
+                                                        "Anexar imagens e arquivos",
+                                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                                                    )
+                                                }
+
+                                                Spacer(modifier = Modifier.height(8.dp))
+
+                                                // Botão 2: Fotografar imagens diretamente pela câmera do celular
+                                                Button(
+                                                    onClick = {
+                                                        val permissionCheck = ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA)
+                                                        if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
+                                                            cameraPhotoLauncher.launch(null)
+                                                        } else {
+                                                            cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                                                        }
+                                                    },
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    shape = RoundedCornerShape(10.dp),
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = SicoiOrange,
+                                                        contentColor = Color.White
+                                                    )
+                                                ) {
+                                                    Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Text(
+                                                        "Fotografar imagens",
+                                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                                                    )
+                                                }
+
+                                                Spacer(modifier = Modifier.height(8.dp))
+
+                                                // Miniaturas das fotos selecionadas
+                                                if (photoBitmaps.isNotEmpty()) {
+                                                    Spacer(modifier = Modifier.height(8.dp))
+                                                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                        items(photoBitmaps.size) { index ->
+                                                            Box(
+                                                                modifier = Modifier.size(72.dp)
                                                             ) {
-                                                                Icon(
-                                                                    Icons.Default.Close,
-                                                                    contentDescription = "Remover",
-                                                                    tint = Color.White,
-                                                                    modifier = Modifier.size(12.dp)
+                                                                Image(
+                                                                    bitmap = photoBitmaps[index].asImageBitmap(),
+                                                                    contentDescription = "Foto ${index + 1}",
+                                                                    contentScale = ContentScale.Crop,
+                                                                    modifier = Modifier
+                                                                        .fillMaxSize()
+                                                                        .clip(RoundedCornerShape(10.dp))
+                                                                        .border(1.dp, SicoiCardBorder, RoundedCornerShape(10.dp))
                                                                 )
+                                                                // Botão de remover
+                                                                IconButton(
+                                                                    onClick = {
+                                                                        photoBitmaps = photoBitmaps.toMutableList().also { it.removeAt(index) }
+                                                                    },
+                                                                    modifier = Modifier
+                                                                        .align(Alignment.TopEnd)
+                                                                        .size(20.dp)
+                                                                        .background(SicoiError.copy(alpha = 0.85f), CircleShape)
+                                                                ) {
+                                                                    Icon(
+                                                                        Icons.Default.Close,
+                                                                        contentDescription = "Remover",
+                                                                        tint = Color.White,
+                                                                        modifier = Modifier.size(12.dp)
+                                                                    )
+                                                                }
                                                             }
                                                         }
                                                     }
+                                                    Text(
+                                                        "${photoBitmaps.size} foto(s) selecionada(s)",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = SicoiTextMuted,
+                                                        modifier = Modifier.padding(top = 4.dp)
+                                                    )
                                                 }
-                                                Text(
-                                                    "${photoBitmaps.size} foto(s) selecionada(s)",
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = SicoiTextMuted,
-                                                    modifier = Modifier.padding(top = 4.dp)
-                                                )
                                             }
                                         }
                                     }
                                 }
                             }
+                        } else {
+                            TechnicianExecutionSection(
+                                viewModel = viewModel,
+                                serviceBitmaps = servicePhotoBitmaps,
+                                onServiceBitmapsChange = { servicePhotoBitmaps = it },
+                                materialBitmaps = materialPhotoBitmaps,
+                                onMaterialBitmapsChange = { materialPhotoBitmaps = it },
+                                onRequestAttach = { section ->
+                                    activeAttachmentSection = section
+                                    photoPickerLauncher.launch("image/*")
+                                },
+                                onRequestCamera = { section ->
+                                    activeAttachmentSection = section
+                                    val permissionCheck = ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA)
+                                    if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
+                                        cameraPhotoLauncher.launch(null)
+                                    } else {
+                                        cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                                    }
+                                }
+                            )
                         }
 
                         Spacer(modifier = Modifier.height(4.dp))
@@ -840,6 +852,596 @@ fun OSFormScreen(
             }
 
             else -> {}
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TechnicianExecutionSection(
+    viewModel: OSFormViewModel,
+    serviceBitmaps: List<Bitmap>,
+    onServiceBitmapsChange: (List<Bitmap>) -> Unit,
+    materialBitmaps: List<Bitmap>,
+    onMaterialBitmapsChange: (List<Bitmap>) -> Unit,
+    onRequestAttach: (String) -> Unit,
+    onRequestCamera: (String) -> Unit
+) {
+    val context = LocalContext.current
+    
+    // Card 1: Controle de Pausa da O.S.
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SicoiCard),
+        border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .background(SicoiOrange.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Schedule, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(20.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Apontamento de Pausas", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
+                    Text("Pausar a execução da ordem de serviço", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
+                }
+                
+                // Botão de Toggle Pausa
+                val isPaused = viewModel.pauseState == "active"
+                Button(
+                    onClick = {
+                        viewModel.pauseState = if (isPaused) "inactive" else "active"
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isPaused) SicoiError else SicoiOrange
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        if (isPaused) "Pausa Ativada" else "Ativar Pausa",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = Color.White)
+                    )
+                }
+            }
+
+            if (viewModel.pauseState == "active") {
+                OutlinedTextField(
+                    value = viewModel.pauseReason,
+                    onValueChange = { viewModel.pauseReason = it },
+                    placeholder = { Text("Motivo / Razão da Pausa...", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
+                    label = { Text("Motivo da Pausa *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    minLines = 2,
+                    colors = sicoiTextFieldColors()
+                )
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    // Card 2: Serviço Externo
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SicoiCard),
+        border = BorderStroke(1.dp, SicoiBlue.copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .background(SicoiBlue.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Settings, contentDescription = null, tint = SicoiBlue, modifier = Modifier.size(20.dp))
+                }
+                Column {
+                    Text("Serviço Externo", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
+                    Text("Necessidade de intervenção externa", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
+                }
+            }
+
+            HorizontalDivider(color = SicoiDivider)
+
+            Text("Necessidade de Serviço Externo?", style = MaterialTheme.typography.labelSmall, color = SicoiTextSecondary)
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val isExternal = viewModel.externalService == "sim"
+                
+                // Botão "Sim"
+                Button(
+                    onClick = { viewModel.externalService = "sim" },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isExternal) SicoiBlue else SicoiSurface
+                    ),
+                    border = BorderStroke(1.dp, if (isExternal) SicoiBlue else SicoiDivider),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Sim", color = if (isExternal) Color.White else SicoiTextSecondary)
+                }
+
+                // Botão "Não"
+                Button(
+                    onClick = { 
+                        viewModel.externalService = "nao"
+                        viewModel.externalJustification = ""
+                        viewModel.externalCompany = ""
+                        viewModel.externalQty = ""
+                        viewModel.externalValue = ""
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (!isExternal) SicoiBlue else SicoiSurface
+                    ),
+                    border = BorderStroke(1.dp, if (!isExternal) SicoiBlue else SicoiDivider),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Não", color = if (!isExternal) Color.White else SicoiTextSecondary)
+                }
+            }
+
+            if (viewModel.externalService == "sim") {
+                OutlinedTextField(
+                    value = viewModel.externalJustification,
+                    onValueChange = { viewModel.externalJustification = it },
+                    placeholder = { Text("Justificativa...", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
+                    label = { Text("Justificativa / Obs") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = sicoiTextFieldColors()
+                )
+
+                OutlinedTextField(
+                    value = viewModel.externalCompany,
+                    onValueChange = { viewModel.externalCompany = it },
+                    placeholder = { Text("Empresa contratada...", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
+                    label = { Text("Para Quem (Empresa)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = sicoiTextFieldColors()
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = viewModel.externalQty,
+                        onValueChange = { viewModel.externalQty = it },
+                        placeholder = { Text("Ex: 1", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
+                        label = { Text("Qtd") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = sicoiTextFieldColors()
+                    )
+
+                    OutlinedTextField(
+                        value = viewModel.externalValue,
+                        onValueChange = { viewModel.externalValue = it },
+                        placeholder = { Text("R$ 0,00", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
+                        label = { Text("Valor Total") },
+                        modifier = Modifier.weight(2f),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = sicoiTextFieldColors()
+                    )
+                }
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    // Card 3: Materiais Utilizados
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SicoiCard),
+        border = BorderStroke(1.dp, SicoiSuccess.copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .background(SicoiSuccess.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.List, contentDescription = null, tint = SicoiSuccess, modifier = Modifier.size(20.dp))
+                    }
+                    Column {
+                        Text("Material Utilizado", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
+                        Text("Peças e insumos aplicados", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
+                    }
+                }
+                
+                // Botão Adicionar Linha
+                OutlinedButton(
+                    onClick = {
+                        viewModel.materialsList.add(MaterialItem(qty = "", description = "", price = ""))
+                    },
+                    border = BorderStroke(1.dp, SicoiSuccess),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = SicoiSuccess),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Adicionar", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                }
+            }
+
+            HorizontalDivider(color = SicoiDivider)
+
+            if (viewModel.materialsList.isEmpty()) {
+                Text(
+                    "Nenhum material adicionado.",
+                    style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    textAlign = TextAlign.Center
+                )
+            } else {
+                viewModel.materialsList.forEachIndexed { index, material ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(SicoiSurface, RoundedCornerShape(8.dp))
+                            .border(1.dp, SicoiDivider, RoundedCornerShape(8.dp))
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        // Qtd
+                        OutlinedTextField(
+                            value = material.qty,
+                            onValueChange = { qty ->
+                                viewModel.materialsList[index] = material.copy(qty = qty)
+                            },
+                            placeholder = { Text("Qtd", style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp)) },
+                            modifier = Modifier.weight(1.5f),
+                            shape = RoundedCornerShape(6.dp),
+                            singleLine = true,
+                            colors = sicoiTextFieldColors()
+                        )
+
+                        // Descrição
+                        OutlinedTextField(
+                            value = material.description,
+                            onValueChange = { desc ->
+                                viewModel.materialsList[index] = material.copy(description = desc)
+                            },
+                            placeholder = { Text("Descrição", style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp)) },
+                            modifier = Modifier.weight(3.5f),
+                            shape = RoundedCornerShape(6.dp),
+                            singleLine = true,
+                            colors = sicoiTextFieldColors()
+                        )
+
+                        // Preço
+                        OutlinedTextField(
+                            value = material.price,
+                            onValueChange = { price ->
+                                viewModel.materialsList[index] = material.copy(price = price)
+                            },
+                            placeholder = { Text("Preço", style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp)) },
+                            modifier = Modifier.weight(2f),
+                            shape = RoundedCornerShape(6.dp),
+                            singleLine = true,
+                            colors = sicoiTextFieldColors()
+                        )
+
+                        // Delete
+                        IconButton(
+                            onClick = { viewModel.materialsList.removeAt(index) },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "Remover", tint = SicoiError, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+            HorizontalDivider(color = SicoiDivider)
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                "Fotos / Comprovantes de Insumos (Opcional)",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = SicoiTextSecondary,
+                    letterSpacing = 0.5.sp
+                )
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Botão 1: Anexar
+                OutlinedButton(
+                    onClick = { onRequestAttach("material") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, SicoiSuccess.copy(alpha = 0.5f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = SicoiSuccess)
+                ) {
+                    Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Anexar", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                }
+
+                // Botão 2: Câmera
+                Button(
+                    onClick = { onRequestCamera("material") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = SicoiSuccess, contentColor = Color.White)
+                ) {
+                    Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Tirar Foto", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                }
+            }
+
+            if (materialBitmaps.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(materialBitmaps.size) { index ->
+                        Box(modifier = Modifier.size(64.dp)) {
+                            Image(
+                                bitmap = materialBitmaps[index].asImageBitmap(),
+                                contentDescription = "Foto ${index + 1}",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(1.dp, SicoiCardBorder, RoundedCornerShape(8.dp))
+                            )
+                            IconButton(
+                                onClick = {
+                                    onMaterialBitmapsChange(materialBitmaps.toMutableList().also { it.removeAt(index) })
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .size(18.dp)
+                                    .background(SicoiError.copy(alpha = 0.85f), CircleShape)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "Remover", tint = Color.White, modifier = Modifier.size(10.dp))
+                            }
+                        }
+                    }
+                }
+                Text(
+                    "${materialBitmaps.size} foto(s) selecionada(s)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SicoiTextMuted,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    // Card 4: Descrição do Serviço Executado
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SicoiCard),
+        border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .background(SicoiOrange.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Build, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(20.dp))
+                }
+                Column {
+                    Text("Serviço Executado", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
+                    Text("Detalhamento da solução aplicada", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
+                }
+            }
+
+            HorizontalDivider(color = SicoiDivider)
+
+            OutlinedTextField(
+                value = viewModel.descriptionExecuted,
+                onValueChange = { viewModel.descriptionExecuted = it },
+                placeholder = { Text("Relate o que foi feito para solucionar o problema...", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
+                label = { Text("Descrição do Serviço Executado") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp),
+                minLines = 4,
+                colors = sicoiTextFieldColors()
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+            HorizontalDivider(color = SicoiDivider)
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                "Fotos / Comprovantes de Serviço Executado (Opcional)",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = SicoiTextSecondary,
+                    letterSpacing = 0.5.sp
+                )
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Botão 1: Anexar
+                OutlinedButton(
+                    onClick = { onRequestAttach("service") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.5f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = SicoiOrange)
+                ) {
+                    Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Anexar", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                }
+
+                // Botão 2: Câmera
+                Button(
+                    onClick = { onRequestCamera("service") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = SicoiOrange, contentColor = Color.White)
+                ) {
+                    Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Tirar Foto", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                }
+            }
+
+            if (serviceBitmaps.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(serviceBitmaps.size) { index ->
+                        Box(modifier = Modifier.size(64.dp)) {
+                            Image(
+                                bitmap = serviceBitmaps[index].asImageBitmap(),
+                                contentDescription = "Foto ${index + 1}",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(1.dp, SicoiCardBorder, RoundedCornerShape(8.dp))
+                            )
+                            IconButton(
+                                onClick = {
+                                    onServiceBitmapsChange(serviceBitmaps.toMutableList().also { it.removeAt(index) })
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .size(18.dp)
+                                    .background(SicoiError.copy(alpha = 0.85f), CircleShape)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "Remover", tint = Color.White, modifier = Modifier.size(10.dp))
+                            }
+                        }
+                    }
+                }
+                Text(
+                    "${serviceBitmaps.size} foto(s) selecionada(s)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SicoiTextMuted,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    // Card 5: Encerramento
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SicoiCard),
+        border = BorderStroke(1.dp, SicoiBlue.copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .background(SicoiBlue.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = SicoiBlue, modifier = Modifier.size(20.dp))
+                }
+                Column {
+                    Text("Encerramento da O.S.", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
+                    Text("Data, hora e visto do técnico executor", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
+                }
+            }
+
+            HorizontalDivider(color = SicoiDivider)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = viewModel.finalDate,
+                    onValueChange = { viewModel.finalDate = it },
+                    placeholder = { Text("YYYY-MM-DD", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
+                    label = { Text("Data Final") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = sicoiTextFieldColors()
+                )
+
+                OutlinedTextField(
+                    value = viewModel.finalHour,
+                    onValueChange = { viewModel.finalHour = it },
+                    placeholder = { Text("HH:MM", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
+                    label = { Text("Hora") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = sicoiTextFieldColors()
+                )
+            }
+
+            OutlinedTextField(
+                value = viewModel.vistoExecutante,
+                onValueChange = { viewModel.vistoExecutante = it },
+                placeholder = { Text("Nome do Técnico", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
+                label = { Text("Visto Executante") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp),
+                colors = sicoiTextFieldColors()
+            )
         }
     }
 }

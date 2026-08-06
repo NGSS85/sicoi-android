@@ -61,3 +61,47 @@ enum class ApprovalStatus(val value: String) {
         fun fromValue(value: String) = entries.firstOrNull { it.value == value } ?: PENDING
     }
 }
+
+@Serializable
+data class AttachedFile(
+    val name: String = "",
+    val url: String = "",
+    val path: String = ""
+)
+
+@Serializable
+data class MaterialItem(
+    val qty: String = "",
+    val description: String = "",
+    val price: String = ""
+)
+
+@Serializable
+data class OSExecutionPayload(
+    @SerialName("os_number") val osNumber: String = "",
+    val date: String = "",
+    val time: String = "",
+    val sector: String = "",
+    val responsible: String = "",
+    val equipment: String = "",
+    @SerialName("equipment_no") val equipmentNo: String = "",
+    val priority: String = "",
+    @SerialName("description_to_execute") val descriptionToExecute: String = "",
+    @SerialName("assigned_technician") val assignedTechnician: String = "",
+    @SerialName("external_service") val externalService: String = "nao",
+    @SerialName("external_justification") val externalJustification: String = "",
+    @SerialName("external_company") val externalCompany: String = "",
+    @SerialName("external_qty") val externalQty: String = "",
+    @SerialName("external_value") val externalValue: String = "",
+    @SerialName("external_attachments") val externalAttachments: List<AttachedFile> = emptyList(),
+    @SerialName("printed_os_attachments") val printedOsAttachments: List<AttachedFile> = emptyList(),
+    @SerialName("photo_attachments") val photoAttachments: List<AttachedFile> = emptyList(),
+    val materials: List<MaterialItem> = emptyList(),
+    @SerialName("pause_state") val pauseState: String = "idle",
+    @SerialName("pause_reason") val pauseReason: String = "",
+    @SerialName("description_executed") val descriptionExecuted: String = "",
+    @SerialName("final_date") val finalDate: String = "",
+    @SerialName("final_hour") val finalHour: String = "",
+    @SerialName("visto_executante") val vistoExecutante: String = ""
+)
+

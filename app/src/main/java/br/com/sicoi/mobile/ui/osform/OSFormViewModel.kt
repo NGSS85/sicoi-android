@@ -12,10 +12,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 
 import br.com.sicoi.mobile.core.network.SupabaseClient
-import br.com.sicoi.mobile.data.model.WorkOrder
+import br.com.sicoi.mobile.data.model.*
 import br.com.sicoi.mobile.data.repository.WorkOrderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,6 +61,31 @@ class OSFormViewModel @Inject constructor(
     var descricaoForm        by androidx.compose.runtime.mutableStateOf("")
     var tiposManutencaoForm  by androidx.compose.runtime.mutableStateOf(setOf<String>())
 
+    // Novos campos do técnico para o formulário completo
+    var externalService       by androidx.compose.runtime.mutableStateOf("nao")
+    var externalJustification by androidx.compose.runtime.mutableStateOf("")
+    var externalCompany       by androidx.compose.runtime.mutableStateOf("")
+    var externalQty           by androidx.compose.runtime.mutableStateOf("")
+    var externalValue         by androidx.compose.runtime.mutableStateOf("")
+    
+    // Anexos carregados/adicionados
+    var loadedExternalAttachments  by androidx.compose.runtime.mutableStateOf<List<AttachedFile>>(emptyList())
+    var loadedPrintedOsAttachments by androidx.compose.runtime.mutableStateOf<List<AttachedFile>>(emptyList())
+    var loadedPhotoAttachments     by androidx.compose.runtime.mutableStateOf<List<AttachedFile>>(emptyList())
+
+    // Lista de materiais dinâmicos
+    val materialsList = androidx.compose.runtime.mutableStateListOf<MaterialItem>()
+
+    // Estados de pausa
+    var pauseState            by androidx.compose.runtime.mutableStateOf("idle")
+    var pauseReason           by androidx.compose.runtime.mutableStateOf("")
+
+    // Apontamento final
+    var descriptionExecuted   by androidx.compose.runtime.mutableStateOf("")
+    var finalDate             by androidx.compose.runtime.mutableStateOf("")
+    var finalHour             by androidx.compose.runtime.mutableStateOf("")
+    var vistoExecutante       by androidx.compose.runtime.mutableStateOf("")
+
     // Mídias capturadas
     var signatureBitmap: Bitmap? = null
     var beforeBitmap: Bitmap? = null
@@ -66,6 +94,74 @@ class OSFormViewModel @Inject constructor(
     var afterUri: Uri? = null
 
     private var currentWorkOrderId: String = ""
+
+    private fun setupFormFromOrder(order: WorkOrder, defaultTechName: String) {
+        // Campos comuns (solicitante)
+        solicitanteForm = order.solicitante ?: ""
+        equipamentoForm = order.equipamento ?: ""
+        patrimonioForm = ""
+        prioridadeForm = order.prioridade ?: "Normal"
+        descricaoForm = order.descricaoProblema ?: ""
+
+        // Campos do técnico
+        externalService = "nao"
+        externalJustification = ""
+        externalCompany = ""
+        externalQty = ""
+        externalValue = ""
+        loadedExternalAttachments = emptyList()
+        loadedPrintedOsAttachments = emptyList()
+        loadedPhotoAttachments = emptyList()
+        materialsList.clear()
+        pauseState = "idle"
+        pauseReason = ""
+        descriptionExecuted = ""
+        finalDate = ""
+        finalHour = ""
+        vistoExecutante = order.tecnicoResponsavel ?: defaultTechName
+
+        // Parse do JSON da solucao_aplicada
+        order.solucaoAplicada?.let { sol ->
+            if (sol.startsWith("[RQ-11-DIGITAL]:")) {
+                try {
+                    val jsonStr = sol.removePrefix("[RQ-11-DIGITAL]:").trim()
+                    val payload = Json.decodeFromString<OSExecutionPayload>(jsonStr)
+                    
+                    solicitanteForm = payload.responsible.ifBlank { order.solicitante ?: "" }
+                    equipamentoForm = payload.equipment.ifBlank { order.equipamento ?: "" }
+                    patrimonioForm = payload.equipmentNo
+                    prioridadeForm = when (payload.priority) {
+                        "emergency" -> "Emergência"
+                        "urgent_2days" -> "Urgente"
+                        else -> "Normal"
+                    }
+                    descricaoForm = payload.descriptionToExecute.ifBlank { order.descricaoProblema ?: "" }
+                    
+                    externalService = payload.externalService
+                    externalJustification = payload.externalJustification
+                    externalCompany = payload.externalCompany
+                    externalQty = payload.externalQty
+                    externalValue = payload.externalValue
+                    
+                    loadedExternalAttachments = payload.externalAttachments
+                    loadedPrintedOsAttachments = payload.printedOsAttachments
+                    loadedPhotoAttachments = payload.photoAttachments
+                    
+                    materialsList.clear()
+                    materialsList.addAll(payload.materials)
+                    
+                    pauseState = payload.pauseState
+                    pauseReason = payload.pauseReason
+                    descriptionExecuted = payload.descriptionExecuted
+                    finalDate = payload.finalDate
+                    finalHour = payload.finalHour
+                    vistoExecutante = payload.vistoExecutante.ifBlank { order.tecnicoResponsavel ?: defaultTechName }
+                } catch (e: Exception) {
+                    android.util.Log.e("OSFormVM", "Erro ao decodificar JSON solucao_aplicada: ${e.message}")
+                }
+            }
+        }
+    }
 
     fun loadWorkOrder(osId: String, technicianName: String) {
         currentWorkOrderId = osId
@@ -81,6 +177,7 @@ class OSFormViewModel @Inject constructor(
                 prioridade = "Normal",
                 descricaoProblema = ""
             )
+            setupFormFromOrder(newOrder, technicianName)
             _state.value = OSFormUiState.Loaded(newOrder)
             return
         }
@@ -90,6 +187,7 @@ class OSFormViewModel @Inject constructor(
                 onSuccess = { orders ->
                     val order = orders.firstOrNull { it.id == osId }
                     if (order != null) {
+                        setupFormFromOrder(order, technicianName)
                         _state.value = OSFormUiState.Loaded(order)
                     } else {
                         val fallbackOrder = WorkOrder(
@@ -103,6 +201,7 @@ class OSFormViewModel @Inject constructor(
                             prioridade = "Normal",
                             descricaoProblema = ""
                         )
+                        setupFormFromOrder(fallbackOrder, technicianName)
                         _state.value = OSFormUiState.Loaded(fallbackOrder)
                     }
                 },
@@ -118,6 +217,7 @@ class OSFormViewModel @Inject constructor(
                         prioridade = "Normal",
                         descricaoProblema = ""
                     )
+                    setupFormFromOrder(fallbackOrder, technicianName)
                     _state.value = OSFormUiState.Loaded(fallbackOrder)
                 }
             )
@@ -203,11 +303,13 @@ class OSFormViewModel @Inject constructor(
         }
     }
 
-    fun finalizeWorkOrder() {
-        if (solucao.isBlank()) {
-            _state.value = OSFormUiState.Error("O campo 'Solução Aplicada' é obrigatório.")
-            return
-        }
+    fun finalizeWorkOrder(
+        technicianName: String,
+        serviceBitmaps: List<Bitmap>,
+        materialBitmaps: List<Bitmap>,
+        onSuccess: () -> Unit
+    ) {
+        val order = (_state.value as? OSFormUiState.Loaded)?.order ?: return
 
         viewModelScope.launch {
             _state.value = OSFormUiState.Saving
@@ -217,34 +319,110 @@ class OSFormViewModel @Inject constructor(
             var sigUrl: String? = null
             var beforeUrl: String? = null
             var afterUrl: String? = null
+            val uploadedServiceUrls = mutableListOf<String>()
+            val uploadedMaterialUrls = mutableListOf<String>()
 
             if (isOnline) {
                 signatureBitmap?.let { sigUrl = uploadBitmap(it, "signature_${currentWorkOrderId}.png") }
                 beforeUri?.let { beforeUrl = uploadUri(it, "before_${currentWorkOrderId}.jpg") }
                 afterUri?.let { afterUrl = uploadUri(it, "after_${currentWorkOrderId}.jpg") }
+
+                serviceBitmaps.forEachIndexed { index, bitmap ->
+                    val fileName = "srv_${currentWorkOrderId}_${index}_${System.currentTimeMillis()}.png"
+                    uploadBitmap(bitmap, fileName)?.let { url ->
+                        uploadedServiceUrls.add(url)
+                    }
+                }
+
+                materialBitmaps.forEachIndexed { index, bitmap ->
+                    val fileName = "mat_${currentWorkOrderId}_${index}_${System.currentTimeMillis()}.png"
+                    uploadBitmap(bitmap, fileName)?.let { url ->
+                        uploadedMaterialUrls.add(url)
+                    }
+                }
+            }
+
+            // Atualiza os anexos carregados
+            val updatedPhotoAttachments = loadedPhotoAttachments.toMutableList()
+            uploadedServiceUrls.forEach { url ->
+                updatedPhotoAttachments.add(AttachedFile(name = "Foto Execução Mobile", url = url, path = url.substringAfterLast("/")))
+            }
+            beforeUrl?.let { url ->
+                updatedPhotoAttachments.add(AttachedFile(name = "Foto Antes Mobile", url = url, path = url.substringAfterLast("/")))
+            }
+            afterUrl?.let { url ->
+                updatedPhotoAttachments.add(AttachedFile(name = "Foto Depois Mobile", url = url, path = url.substringAfterLast("/")))
+            }
+
+            val updatedPrintedOsAttachments = loadedPrintedOsAttachments.toMutableList()
+            uploadedMaterialUrls.forEach { url ->
+                updatedPrintedOsAttachments.add(AttachedFile(name = "Foto Material Mobile", url = url, path = url.substringAfterLast("/")))
+            }
+
+            // Constrói o payload JSON completo
+            val payload = OSExecutionPayload(
+                osNumber = order.numeroOs ?: "",
+                date = order.dataAbertura ?: "",
+                time = "",
+                sector = order.setor ?: "",
+                responsible = solicitanteForm,
+                equipment = equipamentoForm,
+                equipmentNo = patrimonioForm,
+                priority = when (prioridadeForm) {
+                    "Emergência" -> "emergency"
+                    "Urgente" -> "urgent_2days"
+                    else -> "normal"
+                },
+                descriptionToExecute = descricaoForm,
+                assignedTechnician = vistoExecutante.ifBlank { order.tecnicoResponsavel ?: technicianName },
+                externalService = externalService,
+                externalJustification = externalJustification,
+                externalCompany = externalCompany,
+                externalQty = externalQty,
+                externalValue = externalValue,
+                externalAttachments = loadedExternalAttachments,
+                printedOsAttachments = updatedPrintedOsAttachments,
+                photoAttachments = updatedPhotoAttachments,
+                materials = materialsList.toList(),
+                pauseState = pauseState,
+                pauseReason = pauseReason,
+                descriptionExecuted = descriptionExecuted,
+                finalDate = finalDate,
+                finalHour = finalHour,
+                vistoExecutante = vistoExecutante.ifBlank { order.tecnicoResponsavel ?: technicianName }
+            )
+
+            val jsonString = "[RQ-11-DIGITAL]: " + Json.encodeToString(payload)
+            
+            val status = if (finalDate.isNotBlank()) {
+                "Finalizada"
+            } else if (pauseState == "active") {
+                "Pausada"
+            } else {
+                "Em Execução"
             }
 
             repository.finalizeWorkOrder(
                 osId = currentWorkOrderId,
-                solucao = solucao,
-                pecas = pecas,
-                tempo = tempo,
-                assinaturaUrl = sigUrl,
-                fotoAntesUrl = beforeUrl,
-                fotoDepoisUrl = afterUrl,
-                isOnline = isOnline
+                solucao = jsonString,
+                pecas = materialsList.joinToString { "${it.qty}x ${it.description}" },
+                tempo = finalHour.ifBlank { tempo },
+                assinaturaUrl = sigUrl ?: order.assinaturaUrl,
+                fotoAntesUrl = beforeUrl ?: order.fotoAntesUrl,
+                fotoDepoisUrl = afterUrl ?: order.fotoDepoisUrl,
+                isOnline = isOnline,
+                status = status
             ).fold(
                 onSuccess = {
                     if (isOnline) {
-                        _state.value = OSFormUiState.SavedOnline("O.S. finalizada com sucesso!")
+                        _state.value = OSFormUiState.SavedOnline("Ordem de Serviço salva com sucesso!")
                     } else {
-                        _state.value = OSFormUiState.SavedOffline(
-                            "O.S. salva localmente. Será sincronizada automaticamente quando houver conexão."
-                        )
+                        _state.value = OSFormUiState.SavedOffline("Salvo offline. Sincronização pendente.")
                     }
+                    onSuccess()
                 },
                 onFailure = {
-                    _state.value = OSFormUiState.Error(it.message ?: "Erro ao finalizar O.S.")
+                    _state.value = OSFormUiState.Error(it.message ?: "Erro ao salvar O.S.")
                 }
             )
         }

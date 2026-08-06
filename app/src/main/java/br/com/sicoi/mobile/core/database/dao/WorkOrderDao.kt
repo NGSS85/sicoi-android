@@ -26,7 +26,7 @@ interface WorkOrderDao {
     /** Marca uma OS como finalizada offline (aguardando sync) */
     @Query("""
         UPDATE work_orders_offline
-        SET status = 'Finalizada',
+        SET status = :status,
             solucao_aplicada = :solucao,
             pecas_utilizadas = :pecas,
             tempo_gasto = :tempo,
@@ -45,6 +45,7 @@ interface WorkOrderDao {
         assinatura: String?,
         fotoAntes: String?,
         fotoDepois: String?,
+        status: String = "Finalizada",
         timestamp: Long = System.currentTimeMillis()
     )
 

@@ -120,7 +120,6 @@ class WorkOrderRepository @Inject constructor(
     }
 
     /**
-<<<<<<< HEAD
      * Cria uma nova Ordem de Serviço (Solicitação) compatível com o sistema web.
      *
      * O insert usa o formato [RQ-11-DIGITAL]: {...} na coluna solucao_aplicada,
@@ -128,63 +127,7 @@ class WorkOrderRepository @Inject constructor(
      * aparece na aba "Ordens de Serviço em Aberto" do dashboard desktop.
      *
      * A coluna asset_id é NOT NULL, então buscamos um ativo existente antes do insert.
-=======
-     * Busca a numeração sequencial unificada para a próxima OS (ex: 001/26, 002/26, 003/26...)
-     * Seguindo exatamente a mesma lógica utilizada no Sistema Desktop.
-     */
-    suspend fun fetchNextOsNumber(): String {
-        return try {
-            val result = postgrest["ind_maint_os"]
-                .select()
-                .decodeList<WorkOrder>()
-
-            val currentYearSuffix = "/${java.text.SimpleDateFormat("yy", java.util.Locale.getDefault()).format(java.util.Date())}"
-            var maxNumber = 0
-
-            result.forEach { os ->
-                // Checa no json solucao_aplicada [RQ-11-DIGITAL]
-                os.solucaoAplicada?.let { sol ->
-                    if (sol.startsWith("[RQ-11-DIGITAL]:")) {
-                        try {
-                            val jsonString = sol.removePrefix("[RQ-11-DIGITAL]:").trim()
-                            val jsonObject = kotlinx.serialization.json.Json.parseToJsonElement(jsonString) as? kotlinx.serialization.json.JsonObject
-                            val osNumStr = (jsonObject?.get("os_number") as? kotlinx.serialization.json.JsonPrimitive)?.content
-
-                            if (!osNumStr.isNullOrEmpty()) {
-                                val numPart = osNumStr.split("/").firstOrNull()?.replace(Regex("[^0-9]"), "")
-                                val num = numPart?.toIntOrNull() ?: 0
-                                if (num > maxNumber) {
-                                    maxNumber = num
-                                }
-                            }
-                        } catch (e: Exception) {
-                            // Ignora erro de parse
-                        }
-                    }
-                }
-                // Checa no campo numeroOs da WorkOrder
-                os.numeroOs?.let { numOs ->
-                    val numPart = numOs.split("/").firstOrNull()?.replace(Regex("[^0-9]"), "")
-                    val num = numPart?.toIntOrNull() ?: 0
-                    if (num > maxNumber) {
-                        maxNumber = num
-                    }
-                }
-            }
-
-            val nextVal = maxNumber + 1
-            String.format(java.util.Locale.getDefault(), "%03d%s", nextVal, currentYearSuffix)
-        } catch (e: Exception) {
-            Log.e("WorkOrderRepo", "Erro ao buscar próximo número de OS: ${e.message}")
-            val yearSuffix = "/${java.text.SimpleDateFormat("yy", java.util.Locale.getDefault()).format(java.util.Date())}"
-            "001$yearSuffix"
-        }
-    }
-
-    /**
-     * Cria uma nova Ordem de Serviço (Solicitação).
      * Salva no Supabase e no Room offline.
->>>>>>> 1f8b071ff0c33f226bae682e7a3c349b64a98203
      */
     suspend fun createWorkOrder(order: WorkOrder, isOnline: Boolean = true, photoUrls: List<String> = emptyList()): Result<Unit> {
         // Salva no Room local (sempre, para modo offline também)
@@ -283,7 +226,7 @@ class WorkOrderRepository @Inject constructor(
      * Busca as ordens de serviço existentes com o prefixo [RQ-11-DIGITAL]:
      * e calcula o próximo número sequencial no formato NNN/YY (ex: 001/26) para o ano atual.
      */
-    private suspend fun fetchNextOsNumber(): String {
+    suspend fun fetchNextOsNumber(): String {
         var maxNumber = 0
         val currentYearShort = java.text.SimpleDateFormat("yy", java.util.Locale.getDefault()).format(java.util.Date())
         val suffix = "/$currentYearShort"
@@ -356,34 +299,44 @@ class WorkOrderRepository @Inject constructor(
         assinaturaUrl: String?,
         fotoAntesUrl: String?,
         fotoDepoisUrl: String?,
-        isOnline: Boolean
+        isOnline: Boolean,
+        status: String = "Finalizada"
     ): Result<Unit> {
         return if (isOnline) {
             try {
-                postgrest.rpc("finalize_os", buildJsonObject {
-                    put("p_os_id", JsonPrimitive(osId))
-                    put("p_solucao_aplicada", JsonPrimitive(solucao))
-                    put("p_pecas_utilizadas", JsonPrimitive(pecas))
-                    put("p_tempo_gasto", JsonPrimitive(tempo))
-                    assinaturaUrl?.let { put("p_assinatura_url", JsonPrimitive(it)) }
-                    fotoAntesUrl?.let { put("p_foto_antes_url", JsonPrimitive(it)) }
-                    fotoDepoisUrl?.let { put("p_foto_depois_url", JsonPrimitive(it)) }
-                })
+                postgrest["ind_maint_os"].update(buildJsonObject {
+                    put("solucao_aplicada", JsonPrimitive(solucao))
+                    put("pecas_utilizadas", JsonPrimitive(pecas))
+                    put("tempo_gasto", JsonPrimitive(tempo))
+                    put("status", JsonPrimitive(status))
+                    assinaturaUrl?.let { put("assinatura_url", JsonPrimitive(it)) }
+                    fotoAntesUrl?.let { put("foto_antes_url", JsonPrimitive(it)) }
+                    fotoDepoisUrl?.let { put("foto_depois_url", JsonPrimitive(it)) }
+                    if (status == "Finalizada") {
+                        val nowIso = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+                        put("data_fim", JsonPrimitive(nowIso))
+                    }
+                }) {
+                    filter {
+                        eq("id", osId)
+                    }
+                }
                 // Marca como sincronizado no Room também
                 database.workOrderDao().markSynced(osId)
                 Result.success(Unit)
             } catch (e: Exception) {
                 Log.e("WorkOrderRepo", "Falha online, salvando offline: ${e.message}")
-                saveOffline(osId, solucao, pecas, tempo, assinaturaUrl, fotoAntesUrl, fotoDepoisUrl)
+                saveOffline(osId, solucao, pecas, tempo, assinaturaUrl, fotoAntesUrl, fotoDepoisUrl, status)
             }
         } else {
-            saveOffline(osId, solucao, pecas, tempo, assinaturaUrl, fotoAntesUrl, fotoDepoisUrl)
+            saveOffline(osId, solucao, pecas, tempo, assinaturaUrl, fotoAntesUrl, fotoDepoisUrl, status)
         }
     }
 
     private suspend fun saveOffline(
         osId: String, solucao: String, pecas: String, tempo: String,
-        assinaturaUrl: String?, fotoAntesUrl: String?, fotoDepoisUrl: String?
+        assinaturaUrl: String?, fotoAntesUrl: String?, fotoDepoisUrl: String?,
+        status: String
     ): Result<Unit> {
         return try {
             database.workOrderDao().finalizeOffline(
@@ -393,7 +346,8 @@ class WorkOrderRepository @Inject constructor(
                 tempo = tempo,
                 assinatura = assinaturaUrl,
                 fotoAntes = fotoAntesUrl,
-                fotoDepois = fotoDepoisUrl
+                fotoDepois = fotoDepoisUrl,
+                status = status
             )
             Result.success(Unit)
         } catch (e: Exception) {
