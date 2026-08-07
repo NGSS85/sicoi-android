@@ -61,6 +61,12 @@ class OSFormViewModel @Inject constructor(
     var descricaoForm        by androidx.compose.runtime.mutableStateOf("")
     var tiposManutencaoForm  by androidx.compose.runtime.mutableStateOf(setOf<String>())
 
+    // Campos automáticos de data/hora e histórico para o solicitante
+    var dateForm             by androidx.compose.runtime.mutableStateOf("")
+    var timeForm             by androidx.compose.runtime.mutableStateOf("")
+    var allWorkOrders        by androidx.compose.runtime.mutableStateOf<List<WorkOrder>>(emptyList())
+    var loadingHistory       by androidx.compose.runtime.mutableStateOf(true)
+
     // Novos campos do técnico para o formulário completo
     var externalService       by androidx.compose.runtime.mutableStateOf("nao")
     var externalJustification by androidx.compose.runtime.mutableStateOf("")
@@ -96,12 +102,17 @@ class OSFormViewModel @Inject constructor(
     private var currentWorkOrderId: String = ""
 
     private fun setupFormFromOrder(order: WorkOrder, defaultTechName: String) {
+        val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+        val nowTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+
         // Campos comuns (solicitante)
         solicitanteForm = order.solicitante ?: ""
         equipamentoForm = order.equipamento ?: ""
         patrimonioForm = ""
         prioridadeForm = order.prioridade ?: "Normal"
         descricaoForm = order.descricaoProblema ?: ""
+        dateForm = order.dataAbertura ?: today
+        timeForm = nowTime
 
         // Campos do técnico
         externalService = "nao"
@@ -136,6 +147,8 @@ class OSFormViewModel @Inject constructor(
                         else -> "Normal"
                     }
                     descricaoForm = payload.descriptionToExecute.ifBlank { order.descricaoProblema ?: "" }
+                    dateForm = payload.date.ifBlank { order.dataAbertura ?: today }
+                    timeForm = payload.time.ifBlank { nowTime }
                     
                     externalService = payload.externalService
                     externalJustification = payload.externalJustification
@@ -163,7 +176,44 @@ class OSFormViewModel @Inject constructor(
         }
     }
 
+    fun fetchAllHistory(technicianName: String) {
+        viewModelScope.launch {
+            loadingHistory = true
+            repository.fetchAllWorkOrders().fold(
+                onSuccess = { list ->
+                    // Filtra para manter somente as digitais (RQ-11)
+                    val filtered = list.filter { it.solucaoAplicada?.contains("[RQ-11-DIGITAL]") == true }
+                        .filter { item ->
+                            // Mostra apenas ordens de serviço solicitadas por este usuário (technicianName)
+                            val matchesSolicitante = item.solicitante?.equals(technicianName, ignoreCase = true) == true
+                            var matchesJsonResponsible = false
+                            item.solucaoAplicada?.let { sol ->
+                                if (sol.startsWith("[RQ-11-DIGITAL]:")) {
+                                    try {
+                                        val jsonStr = sol.removePrefix("[RQ-11-DIGITAL]:").trim()
+                                        val payload = Json.decodeFromString<OSExecutionPayload>(jsonStr)
+                                        if (payload.responsible.equals(technicianName, ignoreCase = true)) {
+                                            matchesJsonResponsible = true
+                                        }
+                                    } catch (e: Exception) {
+                                        // ignore parsing errors
+                                    }
+                                }
+                            }
+                            matchesSolicitante || matchesJsonResponsible
+                        }
+                    allWorkOrders = filtered
+                },
+                onFailure = {
+                    android.util.Log.e("OSFormVM", "Erro ao buscar histórico de OS: ${it.message}")
+                }
+            )
+            loadingHistory = false
+        }
+    }
+
     fun loadWorkOrder(osId: String, technicianName: String) {
+        fetchAllHistory(technicianName)
         currentWorkOrderId = osId
         if (osId == "new" || osId.isBlank()) {
             val newOrder = WorkOrder(
@@ -246,8 +296,8 @@ class OSFormViewModel @Inject constructor(
                 "001$yearSuffix"
             }
 
-            val todayDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
-            val currentTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+            val todayDate = dateForm.ifBlank { java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()) }
+            val currentTime = timeForm.ifBlank { java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date()) }
 
             val finalTechnician = technicianName.ifBlank { "Não Atribuído" }
 
@@ -294,6 +344,7 @@ class OSFormViewModel @Inject constructor(
             repository.createWorkOrder(newOrder, isOnline, uploadedUrls).fold(
                 onSuccess = {
                     _state.value = OSFormUiState.SavedOnline("Ordem de Serviço $generatedOsNumber gerada e enviada com sucesso!")
+                    fetchAllHistory(technicianName)
                     onSuccess()
                 },
                 onFailure = {

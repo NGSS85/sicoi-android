@@ -394,6 +394,19 @@ class WorkOrderRepository @Inject constructor(
         }
     }
 
+    /** Busca todas as ordens de serviço (abertas e fechadas) diretamente do Supabase */
+    suspend fun fetchAllWorkOrders(): Result<List<WorkOrder>> {
+        return try {
+            val result = postgrest["ind_maint_os"]
+                .select()
+                .decodeList<WorkOrder>()
+            Result.success(result)
+        } catch (e: Exception) {
+            Log.e("WorkOrderRepo", "fetchAllWorkOrders erro: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
 
     // Extensões de conversão
     private fun WorkOrder.toEntity() = WorkOrderEntity(

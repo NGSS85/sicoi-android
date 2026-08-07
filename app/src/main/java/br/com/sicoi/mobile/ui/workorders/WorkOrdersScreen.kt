@@ -97,7 +97,7 @@ fun WorkOrdersScreen(
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         IconButton(
                             onClick = onNavigateBack,
@@ -105,20 +105,42 @@ fun WorkOrdersScreen(
                         ) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = SicoiTextSecondary)
                         }
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        
+                        IconButton(
+                            onClick = { viewModel.fetchOrders(technicianName) },
+                            modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(SicoiCard)
                         ) {
-                            Text(
-                                technicianName, 
-                                style = MaterialTheme.typography.titleLarge.copy(fontSize = 28.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold), 
-                                color = SicoiTextPrimary,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                        IconButton(onClick = { viewModel.fetchOrders(technicianName) }) {
                             Icon(Icons.Default.Refresh, contentDescription = "Atualizar", tint = SicoiTextSecondary)
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            technicianName, 
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                fontSize = 34.sp, 
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Black
+                            ), 
+                            color = SicoiOrange,
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        Text(
+                            "Bem vindo técnico, essas são suas atividades",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = 14.sp, 
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            ),
+                            color = SicoiTextSecondary,
+                            textAlign = TextAlign.Center
+                        )
                     }
 
                     // Badge offline
@@ -416,22 +438,31 @@ private fun WorkOrderCard(workOrder: WorkOrder, isPaused: Boolean = false, onCli
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Botão Abrir
+            // Botão Abrir (Destacado, Centralizado e Maior)
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.Center
             ) {
                 Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(SicoiOrange.copy(alpha = 0.12f))
-                        .border(1.dp, SicoiOrange.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(SicoiOrange)
+                        .border(1.dp, SicoiOrange, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 28.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    Text("Abrir O.S.", style = MaterialTheme.typography.labelSmall.copy(color = SicoiOrange, letterSpacing = 0.sp))
-                    Icon(Icons.Default.ArrowForward, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(14.dp))
+                    Text(
+                        "Abrir O.S.", 
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = Color.White, 
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                            fontSize = 14.sp,
+                            letterSpacing = 0.5.sp
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(Icons.Default.ArrowForward, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                 }
             }
         }
