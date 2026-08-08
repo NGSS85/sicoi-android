@@ -57,6 +57,17 @@ class WorkOrdersViewModel @Inject constructor(
             )
         }
     }
+
+    fun reactivateOrder(osId: String, technicianName: String) {
+        viewModelScope.launch {
+            _state.value = WorkOrdersUiState.Loading
+            // Tenta reativar a ordem para o status 'Em Execução'
+            repository.updateWorkOrderStatus(osId, "Em Execução", true).fold(
+                onSuccess = { fetchOrders(technicianName) },
+                onFailure = { _state.value = WorkOrdersUiState.Error(it.message ?: "Erro ao reativar O.S.") }
+            )
+        }
+    }
 }
 
 /**
@@ -73,6 +84,8 @@ fun WorkOrdersScreen(
     technicianName: String,
     onNavigateBack: () -> Unit,
     onSelectWorkOrder: (workOrderId: String) -> Unit,
+    onNavigateToHistory: (technicianName: String) -> Unit = {},
+    onNavigateToPausedOrders: (technicianName: String) -> Unit = {},
     viewModel: WorkOrdersViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -130,13 +143,13 @@ fun WorkOrdersScreen(
                             textAlign = TextAlign.Center
                         )
                         
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
                         
                         Text(
                             "Bem vindo técnico, essas são suas atividades",
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                fontSize = 14.sp, 
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                fontSize = 18.sp, 
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold
                             ),
                             color = SicoiTextSecondary,
                             textAlign = TextAlign.Center
@@ -206,6 +219,11 @@ fun WorkOrdersScreen(
                         .sortedBy { if (it.prioridade?.lowercase() in listOf("emergency", "emergência", "emergencia")) 0 else 1 }
                     val pausedOrders = visibleOrders.filter { it.status == "Pausada" || it.status == "Pausado" }
                         .sortedBy { if (it.prioridade?.lowercase() in listOf("emergency", "emergência", "emergencia")) 0 else 1 }
+                    val externalOrdersCount = visibleOrders.count { 
+                        it.tecnicoResponsavel?.lowercase()?.trim() == "externo" || 
+                        it.solucaoAplicada?.contains("\"external_service\":\"Sim\"", ignoreCase = true) == true ||
+                        it.solucaoAplicada?.contains("\"external_service\":\"sim\"", ignoreCase = true) == true
+                    }
 
                     if (visibleOrders.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -228,51 +246,144 @@ fun WorkOrdersScreen(
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            if (activeOrders.isNotEmpty()) {
-                                item {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 12.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
+                            item {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(SicoiSurface, RoundedCornerShape(12.dp))
+                                        .border(1.dp, SicoiDivider, RoundedCornerShape(12.dp))
+                                        .padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    // Ordens ativas
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            "Ordens de Serviço Ativas em Tempo Real",
-                                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
-                                            color = SicoiTextPrimary,
-                                            textAlign = TextAlign.Center
+                                            "Ordens ativas",
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                                fontSize = 18.sp
+                                            ),
+                                            color = SicoiTextPrimary
                                         )
-                                        Spacer(modifier = Modifier.height(8.dp))
                                         Text(
                                             "${activeOrders.size}",
-                                            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold),
-                                            color = SicoiOrange,
-                                            modifier = Modifier
-                                                .background(SicoiOrange.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
-                                                .padding(horizontal = 24.dp, vertical = 8.dp)
+                                            style = MaterialTheme.typography.titleLarge.copy(
+                                                fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                                                fontSize = 29.sp
+                                            ),
+                                            color = SicoiOrange
+                                        )
+                                    }
+                                    Divider(color = SicoiDivider)
+                                    // Ordens em Pausa (Navegação)
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(
+                                                Brush.horizontalGradient(
+                                                    listOf(SicoiWarning.copy(alpha = 0.15f), SicoiWarning.copy(alpha = 0.05f))
+                                                )
+                                            )
+                                            .border(1.dp, SicoiWarning.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                                            .clickable { onNavigateToPausedOrders(technicianName) }
+                                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Pause,
+                                                contentDescription = null,
+                                                tint = SicoiWarning,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                            Text(
+                                                "Ordens em Pausa",
+                                                style = MaterialTheme.typography.titleMedium.copy(
+                                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                                    fontSize = 18.sp
+                                                ),
+                                                color = SicoiTextPrimary
+                                            )
+                                        }
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Text(
+                                                "${pausedOrders.size}",
+                                                style = MaterialTheme.typography.titleLarge.copy(
+                                                    fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                                                    fontSize = 26.sp
+                                                ),
+                                                color = SicoiTextSecondary
+                                            )
+                                            Icon(
+                                                Icons.Default.ChevronRight,
+                                                contentDescription = null,
+                                                tint = SicoiWarning,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
+                                    Divider(color = SicoiDivider)
+                                    // Histórico - Minhas atividades
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(
+                                                Brush.horizontalGradient(
+                                                    listOf(SicoiOrange.copy(alpha = 0.15f), SicoiOrange.copy(alpha = 0.05f))
+                                                )
+                                            )
+                                            .border(1.dp, SicoiOrange.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                                            .clickable { onNavigateToHistory(technicianName) }
+                                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.History,
+                                                contentDescription = null,
+                                                tint = SicoiOrange,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                            Text(
+                                                "Histórico - Minhas atividades",
+                                                style = MaterialTheme.typography.titleMedium.copy(
+                                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                                    fontSize = 16.sp
+                                                ),
+                                                color = SicoiOrange
+                                            )
+                                        }
+                                        Icon(
+                                            Icons.Default.ChevronRight,
+                                            contentDescription = null,
+                                            tint = SicoiOrange,
+                                            modifier = Modifier.size(20.dp)
                                         )
                                     }
                                 }
+                            }
+
+                            if (activeOrders.isNotEmpty()) {
                                 items(activeOrders, key = { it.id }) { order ->
                                     WorkOrderCard(
                                         workOrder = order,
-                                        onClick = { onSelectWorkOrder(order.id) }
-                                    )
-                                }
-                            }
-                            
-                            if (pausedOrders.isNotEmpty()) {
-                                item {
-                                    Text(
-                                        "Ordens de Serviço Pausadas",
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
-                                        color = SicoiTextMuted,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 8.dp)
-                                    )
-                                }
-                                items(pausedOrders, key = { it.id }) { order ->
-                                    WorkOrderCard(
-                                        workOrder = order,
-                                        isPaused = true,
                                         onClick = { onSelectWorkOrder(order.id) }
                                     )
                                 }
@@ -289,7 +400,12 @@ fun WorkOrdersScreen(
 }
 
 @Composable
-private fun WorkOrderCard(workOrder: WorkOrder, isPaused: Boolean = false, onClick: () -> Unit) {
+fun WorkOrderCard(
+    workOrder: WorkOrder, 
+    isPaused: Boolean = false, 
+    onClick: () -> Unit,
+    onReactivate: (() -> Unit)? = null
+) {
     val displayPriority = when (workOrder.prioridade?.lowercase()?.trim()) {
         "emergency", "emergência", "emergencia", "crítica", "critica" -> "Emergência"
         "high", "urgente", "urgent_2days", "alta" -> "Urgente"
@@ -362,27 +478,29 @@ private fun WorkOrderCard(workOrder: WorkOrder, isPaused: Boolean = false, onCli
                     if (isPaused) {
                         Row(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(SicoiError.copy(alpha = 0.15f))
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("PAUSADA", style = MaterialTheme.typography.labelSmall.copy(color = SicoiError, letterSpacing = 0.sp))
+                            Text("PAUSADA", style = MaterialTheme.typography.titleMedium.copy(color = SicoiError, fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold, fontSize = 16.sp, letterSpacing = 0.sp))
                         }
                     }
                     
                     Row(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .background(priorityColor.copy(alpha = if (displayPriority == "Emergência") 0.9f * blinkAlpha else 0.15f))
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(priorityIcon, contentDescription = null, tint = if (displayPriority == "Emergência") Color.White else priorityColor, modifier = Modifier.size(12.dp))
+                        Icon(priorityIcon, contentDescription = null, tint = if (displayPriority == "Emergência") Color.White else priorityColor, modifier = Modifier.size(22.dp))
                         Text(
                             displayPriority,
-                            style = MaterialTheme.typography.labelSmall.copy(
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                                fontSize = 16.sp,
                                 letterSpacing = 0.sp,
                                 color = if (displayPriority == "Emergência") Color.White else priorityColor
                             )
@@ -428,9 +546,9 @@ private fun WorkOrderCard(workOrder: WorkOrder, isPaused: Boolean = false, onCli
                 ) {
                     Text(
                         workOrder.descricaoProblema,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium),
                         color = SicoiTextSecondary,
-                        maxLines = 3,
+                        maxLines = 4,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
@@ -438,22 +556,24 @@ private fun WorkOrderCard(workOrder: WorkOrder, isPaused: Boolean = false, onCli
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Botão Abrir (Destacado, Centralizado e Maior)
+            // Botão Abrir ou Reativar
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 horizontalArrangement = Arrangement.Center
             ) {
+                val buttonColor = if (isPaused && onReactivate != null) SicoiSuccess else SicoiOrange
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(SicoiOrange)
-                        .border(1.dp, SicoiOrange, RoundedCornerShape(12.dp))
+                        .background(buttonColor)
+                        .border(1.dp, buttonColor, RoundedCornerShape(12.dp))
+                        .clickable { if (isPaused && onReactivate != null) onReactivate() else onClick() }
                         .padding(horizontal = 28.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        "Abrir O.S.", 
+                        if (isPaused && onReactivate != null) "Reativar O.S." else "Abrir O.S.", 
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = Color.White, 
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
@@ -462,7 +582,12 @@ private fun WorkOrderCard(workOrder: WorkOrder, isPaused: Boolean = false, onCli
                         )
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Icon(Icons.Default.ArrowForward, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Icon(
+                        if (isPaused && onReactivate != null) Icons.Default.PlayArrow else Icons.Default.ArrowForward, 
+                        contentDescription = null, 
+                        tint = Color.White, 
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
         }
@@ -475,14 +600,14 @@ private fun WorkOrderInfoRow(icon: androidx.compose.ui.graphics.vector.ImageVect
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Icon(icon, contentDescription = null, tint = SicoiTextMuted, modifier = Modifier.size(14.dp))
+        Icon(icon, contentDescription = null, tint = SicoiTextMuted, modifier = Modifier.size(20.dp))
         Text(
             "$label: ",
-            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, color = SicoiTextMuted)
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp, color = SicoiTextMuted)
         )
         Text(
             value,
-            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, color = SicoiTextPrimary),
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, color = SicoiTextPrimary),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )

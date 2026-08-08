@@ -52,6 +52,24 @@ class WorkOrderRepository @Inject constructor(
         }
     }
 
+    /** Busca TODAS as OS de um técnico (histórico: ativas, finalizadas, pausadas, externas) */
+    suspend fun fetchAllOrdersByTechnician(technicianName: String): Result<List<WorkOrder>> {
+        return try {
+            val result = postgrest["ind_maint_os"]
+                .select {
+                    filter {
+                        eq("tecnico_responsavel", technicianName)
+                    }
+                }
+                .decodeList<WorkOrder>()
+            Result.success(result)
+        } catch (e: Exception) {
+            Log.e("WorkOrderRepo", "Erro ao buscar histórico: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+
     /** OS em aberto como Flow do Room (reativo, funciona offline) */
     fun getOpenOrdersFlow(): Flow<List<WorkOrderEntity>> =
         database.workOrderDao().getOpenOrders()
@@ -196,6 +214,7 @@ class WorkOrderRepository @Inject constructor(
                 put("maint_types",            kotlinx.serialization.json.JsonArray(emptyList()))
                 put("photo_attachments",      photoAttachmentsJson)
                 put("pause_state",            JsonPrimitive("idle"))
+                put("origem",                 JsonPrimitive("App mobile"))
             }
 
             // 7. Inserir na ind_maint_os com o payload correto
@@ -203,7 +222,7 @@ class WorkOrderRepository @Inject constructor(
                 put("asset_id",           JsonPrimitive(assetId))
                 put("descricao_problema", JsonPrimitive(order.descricaoProblema ?: "Abertura de OS pelo App Mobile."))
                 put("solucao_aplicada",   JsonPrimitive("[RQ-11-DIGITAL]: $rq11Json"))
-                put("tecnico_responsavel",JsonPrimitive(order.tecnicoResponsavel ?: order.solicitante ?: "Não Atribuído"))
+                put("tecnico_responsavel",JsonPrimitive(if (order.tecnicoResponsavel.isNullOrBlank() || order.tecnicoResponsavel == "Não Atribuído") "" else order.tecnicoResponsavel))
                 put("status",             JsonPrimitive(statusWeb))
                 put("data_abertura",      JsonPrimitive(
                     order.dataAbertura?.let { "$it T00:00:00" }
@@ -304,29 +323,43 @@ class WorkOrderRepository @Inject constructor(
     ): Result<Unit> {
         return if (isOnline) {
             try {
+                val nowIso = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+                
+                // 1. Update direto na tabela ind_maint_os
                 postgrest["ind_maint_os"].update(buildJsonObject {
-                    put("solucao_aplicada", JsonPrimitive(solucao))
-                    put("pecas_utilizadas", JsonPrimitive(pecas))
-                    put("tempo_gasto", JsonPrimitive(tempo))
                     put("status", JsonPrimitive(status))
-                    assinaturaUrl?.let { put("assinatura_url", JsonPrimitive(it)) }
+                    put("solucao_aplicada", JsonPrimitive(solucao))
+                    put("data_fim", JsonPrimitive(nowIso))
                     fotoAntesUrl?.let { put("foto_antes_url", JsonPrimitive(it)) }
                     fotoDepoisUrl?.let { put("foto_depois_url", JsonPrimitive(it)) }
-                    if (status == "Finalizada") {
-                        val nowIso = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
-                        put("data_fim", JsonPrimitive(nowIso))
-                    }
                 }) {
                     filter {
                         eq("id", osId)
                     }
                 }
-                // Marca como sincronizado no Room também
+
+                // 2. Chamada redundante à RPC finalize_os
+                try {
+                    postgrest.rpc("finalize_os", buildJsonObject {
+                        put("p_os_id", JsonPrimitive(osId))
+                        put("p_solucao_aplicada", JsonPrimitive(solucao))
+                        put("p_pecas_utilizadas", JsonPrimitive(pecas))
+                        put("p_tempo_gasto", JsonPrimitive(tempo))
+                        put("p_assinatura_url", if (assinaturaUrl != null) JsonPrimitive(assinaturaUrl) else kotlinx.serialization.json.JsonNull)
+                        put("p_foto_antes_url", if (fotoAntesUrl != null) JsonPrimitive(fotoAntesUrl) else kotlinx.serialization.json.JsonNull)
+                        put("p_foto_depois_url", if (fotoDepoisUrl != null) JsonPrimitive(fotoDepoisUrl) else kotlinx.serialization.json.JsonNull)
+                    })
+                } catch (rpcErr: Exception) {
+                    Log.w("WorkOrderRepo", "Aviso RPC finalize_os: ${rpcErr.message}")
+                }
+
+                // Marca como sincronizado no Room local
                 database.workOrderDao().markSynced(osId)
                 Result.success(Unit)
             } catch (e: Exception) {
-                Log.e("WorkOrderRepo", "Falha online, salvando offline: ${e.message}")
-                saveOffline(osId, solucao, pecas, tempo, assinaturaUrl, fotoAntesUrl, fotoDepoisUrl, status)
+                Log.e("WorkOrderRepo", "Erro ao finalizar OS online: ${e.message}", e)
+                // Se estiver online, NUNCA mascara o erro. Exibe diretamente para o usuario!
+                Result.failure(Exception("Erro no Supabase: ${e.message}"))
             }
         } else {
             saveOffline(osId, solucao, pecas, tempo, assinaturaUrl, fotoAntesUrl, fotoDepoisUrl, status)
@@ -357,6 +390,8 @@ class WorkOrderRepository @Inject constructor(
 
     /**
      * Atualiza o status de uma OS.
+     * Quando pausada, também insere uma observação compatível com o sistema web,
+     * para que a OS apareça na tela "OS Pausadas" do painel de manutenção.
      */
     suspend fun updateWorkOrderStatus(
         osId: String,
@@ -365,7 +400,8 @@ class WorkOrderRepository @Inject constructor(
     ): Result<Unit> {
         return if (isOnline) {
             try {
-                postgrest["ind_maint_work_orders"].update(
+                // 1. Atualiza o status na tabela ind_maint_os
+                postgrest["ind_maint_os"].update(
                     buildJsonObject {
                         put("status", JsonPrimitive(newStatus))
                     }
@@ -374,11 +410,30 @@ class WorkOrderRepository @Inject constructor(
                         eq("id", osId)
                     }
                 }
+
+                // 2. Se for pausa ou reativação, insere observação compatível com o sistema web
+                if (newStatus == "Pausada" || newStatus == "Em Execução") {
+                    try {
+                        postgrest["ind_maint_os_observations"].insert(
+                            buildJsonObject {
+                                put("os_id", JsonPrimitive(osId))
+                                put("observacao", JsonPrimitive("Status alterado para: $newStatus"))
+                                put("autor", JsonPrimitive("App Mobile"))
+                            }
+                        )
+                        Log.i("WorkOrderRepo", "✅ Observação de $newStatus inserida para OS $osId")
+                    } catch (obsErr: Exception) {
+                        Log.w("WorkOrderRepo", "Aviso: falha ao inserir observação: ${obsErr.message}")
+                        // Não falha o fluxo principal — a OS já foi pausada no status
+                    }
+                }
+
                 database.workOrderDao().updateStatus(osId, newStatus, 0)
+                Log.i("WorkOrderRepo", "✅ Status atualizado para '$newStatus' na OS $osId")
                 Result.success(Unit)
             } catch (e: Exception) {
-                Log.e("WorkOrderRepo", "Falha online ao atualizar status, salvando offline: ${e.message}")
-                saveStatusOffline(osId, newStatus)
+                Log.e("WorkOrderRepo", "Falha online ao atualizar status: ${e.message}")
+                Result.failure(Exception("Erro no Supabase: ${e.message}"))
             }
         } else {
             saveStatusOffline(osId, newStatus)

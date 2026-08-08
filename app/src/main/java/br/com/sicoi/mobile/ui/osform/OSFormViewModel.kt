@@ -362,6 +362,37 @@ class OSFormViewModel @Inject constructor(
     ) {
         val order = (_state.value as? OSFormUiState.Loaded)?.order ?: return
 
+        if (descriptionExecuted.isBlank() && pauseState != "active") {
+            _state.value = OSFormUiState.Error("O campo 'Serviço Executado' é obrigatório para finalizar a O.S.")
+            return
+        }
+
+        // Ao pausar, salva diretamente via updateWorkOrderStatus (sem precisar do formulário completo)
+        if (pauseState == "active") {
+            viewModelScope.launch {
+                _state.value = OSFormUiState.Saving
+                val isOnline = isNetworkAvailable()
+                repository.updateWorkOrderStatus(
+                    osId = currentWorkOrderId,
+                    newStatus = "Pausada",
+                    isOnline = isOnline
+                ).fold(
+                    onSuccess = {
+                        if (isOnline) {
+                            _state.value = OSFormUiState.SavedOnline("⏸ O.S. pausada com sucesso! Ela aparecerá na lista de pausadas.")
+                        } else {
+                            _state.value = OSFormUiState.SavedOffline("Pausada offline. Será sincronizado ao reconectar.")
+                        }
+                        onSuccess()
+                    },
+                    onFailure = {
+                        _state.value = OSFormUiState.Error(it.message ?: "Erro ao pausar O.S.")
+                    }
+                )
+            }
+            return
+        }
+
         viewModelScope.launch {
             _state.value = OSFormUiState.Saving
             val isOnline = isNetworkAvailable()
@@ -438,14 +469,22 @@ class OSFormViewModel @Inject constructor(
                 pauseState = pauseState,
                 pauseReason = pauseReason,
                 descriptionExecuted = descriptionExecuted,
-                finalDate = finalDate,
-                finalHour = finalHour,
+                finalDate = if (finalDate.isBlank() && pauseState != "active") {
+                    java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+                } else {
+                    finalDate
+                },
+                finalHour = if (finalHour.isBlank() && pauseState != "active") {
+                    java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+                } else {
+                    finalHour
+                },
                 vistoExecutante = vistoExecutante.ifBlank { order.tecnicoResponsavel ?: technicianName }
             )
 
             val jsonString = "[RQ-11-DIGITAL]: " + Json.encodeToString(payload)
             
-            val status = if (finalDate.isNotBlank()) {
+            val status = if (payload.finalDate.isNotBlank() && pauseState != "active") {
                 "Finalizada"
             } else if (pauseState == "active") {
                 "Pausada"
@@ -457,7 +496,7 @@ class OSFormViewModel @Inject constructor(
                 osId = currentWorkOrderId,
                 solucao = jsonString,
                 pecas = materialsList.joinToString { "${it.qty}x ${it.description}" },
-                tempo = finalHour.ifBlank { tempo },
+                tempo = payload.finalHour.ifBlank { tempo },
                 assinaturaUrl = sigUrl ?: order.assinaturaUrl,
                 fotoAntesUrl = beforeUrl ?: order.fotoAntesUrl,
                 fotoDepoisUrl = afterUrl ?: order.fotoDepoisUrl,

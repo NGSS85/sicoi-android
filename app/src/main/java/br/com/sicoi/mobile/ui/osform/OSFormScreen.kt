@@ -486,7 +486,8 @@ fun OSFormScreen(
                                                 value = viewModel.equipamentoForm,
                                                 onValueChange = { viewModel.equipamentoForm = it },
                                                 placeholder = "Ex: Prensa Hidráulica 50T",
-                                                icon = Icons.Default.Settings
+                                                icon = Icons.Default.Settings,
+                                                isTab1 = true
                                             )
 
                                             // Número do Patrimônio
@@ -495,7 +496,8 @@ fun OSFormScreen(
                                                 value = viewModel.patrimonioForm,
                                                 onValueChange = { viewModel.patrimonioForm = it },
                                                 placeholder = "Ex: PAT-00123",
-                                                icon = Icons.Default.Tag
+                                                icon = Icons.Default.Tag,
+                                                isTab1 = true
                                             )
 
                                             // Prioridade — Seleção com chips
@@ -503,7 +505,9 @@ fun OSFormScreen(
                                                 Text(
                                                     "Prioridade *",
                                                     style = MaterialTheme.typography.labelSmall.copy(
-                                                        color = SicoiTextSecondary,
+                                                        color = androidx.compose.ui.graphics.Color.White,
+                                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                                        fontSize = 12.1.sp,
                                                         letterSpacing = 0.5.sp
                                                     )
                                                 )
@@ -525,7 +529,8 @@ fun OSFormScreen(
                                                                 Text(
                                                                     label,
                                                                     style = MaterialTheme.typography.labelMedium.copy(
-                                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                                        fontSize = 13.2.sp
                                                                     )
                                                                 )
                                                             },
@@ -552,7 +557,9 @@ fun OSFormScreen(
                                                 Text(
                                                     "Tipo de Manutenção *",
                                                     style = MaterialTheme.typography.labelSmall.copy(
-                                                        color = SicoiTextSecondary,
+                                                        color = androidx.compose.ui.graphics.Color.White,
+                                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                                        fontSize = 12.1.sp,
                                                         letterSpacing = 0.5.sp
                                                     )
                                                 )
@@ -577,7 +584,7 @@ fun OSFormScreen(
                                                                     tipo,
                                                                     style = MaterialTheme.typography.labelMedium.copy(
                                                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                                                        fontSize = 11.sp
+                                                                        fontSize = 12.1.sp
                                                                     )
                                                                 )
                                                             },
@@ -617,7 +624,7 @@ fun OSFormScreen(
                                                                     tipo,
                                                                     style = MaterialTheme.typography.labelMedium.copy(
                                                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                                                        fontSize = 11.sp
+                                                                        fontSize = 12.1.sp
                                                                     )
                                                                 )
                                                             },
@@ -644,7 +651,9 @@ fun OSFormScreen(
                                                 Text(
                                                     "Descrição do Problema *",
                                                     style = MaterialTheme.typography.labelSmall.copy(
-                                                        color = SicoiTextSecondary,
+                                                        color = androidx.compose.ui.graphics.Color.White,
+                                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                                        fontSize = 12.1.sp,
                                                         letterSpacing = 0.5.sp
                                                     )
                                                 )
@@ -652,10 +661,11 @@ fun OSFormScreen(
                                                 OutlinedTextField(
                                                     value = viewModel.descricaoForm,
                                                     onValueChange = { viewModel.descricaoForm = it },
+                                                    textStyle = LocalTextStyle.current.copy(fontSize = 17.6.sp),
                                                     placeholder = {
                                                         Text(
                                                             "Descreva detalhadamente o problema ou falha observada...",
-                                                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, color = SicoiTextMuted)
+                                                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.2.sp, color = SicoiTextMuted)
                                                         )
                                                     },
                                                     modifier = Modifier.fillMaxWidth(),
@@ -670,7 +680,9 @@ fun OSFormScreen(
                                                 Text(
                                                     "Fotos do Problema (Opcional)",
                                                     style = MaterialTheme.typography.labelSmall.copy(
-                                                        color = SicoiTextSecondary,
+                                                        color = androidx.compose.ui.graphics.Color.White,
+                                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                                        fontSize = 12.1.sp,
                                                         letterSpacing = 0.5.sp
                                                     )
                                                 )
@@ -688,7 +700,10 @@ fun OSFormScreen(
                                                     Spacer(modifier = Modifier.width(8.dp))
                                                     Text(
                                                         "Anexar imagens e arquivos",
-                                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                                                        style = MaterialTheme.typography.labelMedium.copy(
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontSize = 13.2.sp
+                                                        )
                                                     )
                                                 }
 
@@ -715,7 +730,10 @@ fun OSFormScreen(
                                                     Spacer(modifier = Modifier.width(8.dp))
                                                     Text(
                                                         "Fotografar imagens",
-                                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                                                        style = MaterialTheme.typography.labelMedium.copy(
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontSize = 13.2.sp
+                                                        )
                                                     )
                                                 }
 
@@ -1660,18 +1678,27 @@ private fun EditableOSField(
     placeholder: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     minLines: Int = 1,
-    isTab0: Boolean = false
+    isTab0: Boolean = false,
+    isTab1: Boolean = false
 ) {
-    val scaleLabel = if (isTab0) 1.1f else 1.0f
-    val scaleValue = if (isTab0) 1.15f else 1.0f
-    val weight = if (isTab0) androidx.compose.ui.text.font.FontWeight.Bold else null
+    val scaleLabel = if (isTab0) 1.1f else if (isTab1) 1.1f else 1.0f
+    val scaleValue = if (isTab0) 1.15f else if (isTab1) 1.1f else 1.0f
+    val weight = if (isTab0) androidx.compose.ui.text.font.FontWeight.Bold else if (isTab1) androidx.compose.ui.text.font.FontWeight.Bold else null
     val defaultLabelSize = 11.sp
     val defaultBodySize = 16.sp
+
+    val labelColor = if (isTab1) androidx.compose.ui.graphics.Color.White else SicoiTextSecondary
+    val labelWeight = if (isTab1) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
 
     Column {
         Text(
             label,
-            style = MaterialTheme.typography.labelSmall.copy(color = SicoiTextSecondary, letterSpacing = 0.5.sp, fontSize = defaultLabelSize * scaleLabel)
+            style = MaterialTheme.typography.labelSmall.copy(
+                color = labelColor, 
+                letterSpacing = 0.5.sp, 
+                fontSize = defaultLabelSize * scaleLabel,
+                fontWeight = labelWeight
+            )
         )
         Spacer(modifier = Modifier.height(4.dp))
         OutlinedTextField(

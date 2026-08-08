@@ -13,7 +13,9 @@ import br.com.sicoi.mobile.ui.login.SignupScreen
 import br.com.sicoi.mobile.ui.modules.ModulesScreen
 import br.com.sicoi.mobile.ui.osform.OSFormScreen
 import br.com.sicoi.mobile.ui.technicians.TechniciansScreen
+import br.com.sicoi.mobile.ui.workorders.TechnicianHistoryScreen
 import br.com.sicoi.mobile.ui.workorders.WorkOrdersScreen
+import br.com.sicoi.mobile.ui.workorders.PausedWorkOrdersScreen
 
 /**
  * Grafo de navegação do SICOI Mobile.
@@ -37,6 +39,8 @@ object Routes {
     const val WORK_ORDERS = "workorders/{technicianId}/{technicianName}"
     const val OS_FORM = "osform/{workOrderId}/{technicianName}"
     const val OS_FORM_REQUESTER = "osform_requester/{workOrderId}/{technicianName}"
+    const val TECHNICIAN_HISTORY = "technician_history/{technicianName}"
+    const val PAUSED_ORDERS = "paused_orders/{technicianName}"
 
     fun modules(userName: String) = "modules/${userName.encode()}"
     fun workOrders(technicianId: String, technicianName: String) =
@@ -45,6 +49,10 @@ object Routes {
         "osform/${workOrderId.encode()}/${technicianName.encode()}"
     fun osFormRequester(workOrderId: String, technicianName: String) =
         "osform_requester/${workOrderId.encode()}/${technicianName.encode()}"
+    fun technicianHistory(technicianName: String) =
+        "technician_history/${technicianName.encode()}"
+    fun pausedOrders(technicianName: String) =
+        "paused_orders/${technicianName.encode()}"
 
     private fun String.encode() = java.net.URLEncoder.encode(this, "UTF-8")
 }
@@ -125,7 +133,7 @@ fun SicoiNavGraph(
             )
         }
 
-        // ── Tela 4: Lista de O.S. em Aberto ───────────────────────────────
+        // ── Tela 4: Lista de O.S. em Aberto ───────────────────────────────────────
         composable(
             route = Routes.WORK_ORDERS,
             arguments = listOf(
@@ -143,7 +151,45 @@ fun SicoiNavGraph(
                 onNavigateBack = { navController.popBackStack() },
                 onSelectWorkOrder = { osId ->
                     navController.navigate(Routes.osForm(osId, techName))
+                },
+                onNavigateToHistory = {
+                    navController.navigate(Routes.technicianHistory(techName))
+                },
+                onNavigateToPausedOrders = {
+                    navController.navigate(Routes.pausedOrders(techName))
                 }
+            )
+        }
+
+        // ── Tela 4.5: Lista de O.S. Pausadas ───────────────────────────────────────
+        composable(
+            route = Routes.PAUSED_ORDERS,
+            arguments = listOf(navArgument("technicianName") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val techName = backStackEntry.arguments?.getString("technicianName")
+                ?.let { java.net.URLDecoder.decode(it, "UTF-8") } ?: ""
+
+            PausedWorkOrdersScreen(
+                technicianName = techName,
+                onNavigateBack = { navController.popBackStack() },
+                onSelectWorkOrder = { osId ->
+                    navController.navigate(Routes.osForm(osId, techName))
+                }
+            )
+        }
+
+        // ── Tela 4.1: Histórico do Técnico ──────────────────────────────────
+        composable(
+            route = Routes.TECHNICIAN_HISTORY,
+            arguments = listOf(
+                navArgument("technicianName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val techName = backStackEntry.arguments?.getString("technicianName")
+                ?.let { java.net.URLDecoder.decode(it, "UTF-8") } ?: ""
+            TechnicianHistoryScreen(
+                technicianName = techName,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
