@@ -338,7 +338,7 @@ class WorkOrderRepository @Inject constructor(
                     }
                 }
 
-                // 2. Chamada redundante à RPC finalize_os
+                // 2. Chamada redundante à RPC finalize_os — agora passa o status correto
                 try {
                     postgrest.rpc("finalize_os", buildJsonObject {
                         put("p_os_id", JsonPrimitive(osId))
@@ -348,6 +348,7 @@ class WorkOrderRepository @Inject constructor(
                         put("p_assinatura_url", if (assinaturaUrl != null) JsonPrimitive(assinaturaUrl) else kotlinx.serialization.json.JsonNull)
                         put("p_foto_antes_url", if (fotoAntesUrl != null) JsonPrimitive(fotoAntesUrl) else kotlinx.serialization.json.JsonNull)
                         put("p_foto_depois_url", if (fotoDepoisUrl != null) JsonPrimitive(fotoDepoisUrl) else kotlinx.serialization.json.JsonNull)
+                        put("p_status", JsonPrimitive(status)) // passa "Pausada", "Finalizada" ou "Em Execução"
                     })
                 } catch (rpcErr: Exception) {
                     Log.w("WorkOrderRepo", "Aviso RPC finalize_os: ${rpcErr.message}")
@@ -424,7 +425,41 @@ class WorkOrderRepository @Inject constructor(
                         Log.i("WorkOrderRepo", "✅ Observação de $newStatus inserida para OS $osId")
                     } catch (obsErr: Exception) {
                         Log.w("WorkOrderRepo", "Aviso: falha ao inserir observação: ${obsErr.message}")
-                        // Não falha o fluxo principal — a OS já foi pausada no status
+                    }
+                }
+
+                // 3. Ao reativar, atualiza o pause_state no JSON de solucao_aplicada
+                if (newStatus == "Em Execução") {
+                    try {
+                        val osRows = postgrest["ind_maint_os"]
+                            .select {
+                                filter { eq("id", osId) }
+                            }
+                            .decodeList<JsonObject>()
+                        val currentSolucao = osRows.firstOrNull()
+                            ?.get("solucao_aplicada")?.jsonPrimitive?.content
+
+                        if (!currentSolucao.isNullOrBlank() &&
+                            currentSolucao.startsWith("[RQ-11-DIGITAL]:")) {
+                            val jsonStr = currentSolucao.removePrefix("[RQ-11-DIGITAL]:").trim()
+                            val parsed = kotlinx.serialization.json.Json
+                                .parseToJsonElement(jsonStr).jsonObject
+                            val updated = buildJsonObject {
+                                parsed.forEach { (key, value) -> put(key, value) }
+                                put("pause_state", JsonPrimitive("inactive"))
+                                put("pause_reason", JsonPrimitive(""))
+                            }
+                            postgrest["ind_maint_os"].update(
+                                buildJsonObject {
+                                    put("solucao_aplicada", JsonPrimitive("[RQ-11-DIGITAL]: $updated"))
+                                }
+                            ) {
+                                filter { eq("id", osId) }
+                            }
+                            Log.i("WorkOrderRepo", "✅ pause_state resetado para 'inactive' na OS $osId")
+                        }
+                    } catch (jsonErr: Exception) {
+                        Log.w("WorkOrderRepo", "Aviso: falha ao resetar pause_state no JSON: ${jsonErr.message}")
                     }
                 }
 

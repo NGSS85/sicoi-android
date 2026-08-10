@@ -362,29 +362,9 @@ class OSFormViewModel @Inject constructor(
             return
         }
 
-        // Ao pausar, salva diretamente via updateWorkOrderStatus (sem precisar do formulário completo)
-        if (pauseState == "active") {
-            viewModelScope.launch {
-                _state.value = OSFormUiState.Saving
-                val isOnline = isNetworkAvailable()
-                repository.updateWorkOrderStatus(
-                    osId = currentWorkOrderId,
-                    newStatus = "Pausada",
-                    isOnline = isOnline
-                ).fold(
-                    onSuccess = {
-                        if (isOnline) {
-                            _state.value = OSFormUiState.SavedOnline("⏸ O.S. pausada com sucesso! Ela aparecerá na lista de pausadas.")
-                        } else {
-                            _state.value = OSFormUiState.SavedOffline("Pausada offline. Será sincronizado ao reconectar.")
-                        }
-                        onSuccess()
-                    },
-                    onFailure = {
-                        _state.value = OSFormUiState.Error(it.message ?: "Erro ao pausar O.S.")
-                    }
-                )
-            }
+        // Valida que o motivo da pausa foi preenchido antes de salvar
+        if (pauseState == "active" && pauseReason.isBlank()) {
+            _state.value = OSFormUiState.Error("⏸ Informe o motivo da pausa antes de salvar o formulário.")
             return
         }
 
@@ -498,9 +478,17 @@ class OSFormViewModel @Inject constructor(
             ).fold(
                 onSuccess = {
                     if (isOnline) {
-                        _state.value = OSFormUiState.SavedOnline("Ordem de Serviço salva com sucesso!")
+                        val msg = if (pauseState == "active")
+                            "⏸ O.S. pausada com sucesso! Ela aparecerá na lista de pausadas."
+                        else
+                            "✅ Ordem de Serviço salva com sucesso!"
+                        _state.value = OSFormUiState.SavedOnline(msg)
                     } else {
-                        _state.value = OSFormUiState.SavedOffline("Salvo offline. Sincronização pendente.")
+                        val msg = if (pauseState == "active")
+                            "Pausada offline. Será sincronizada ao reconectar."
+                        else
+                            "Salvo offline. Sincronização pendente."
+                        _state.value = OSFormUiState.SavedOffline(msg)
                     }
                     onSuccess()
                 },
