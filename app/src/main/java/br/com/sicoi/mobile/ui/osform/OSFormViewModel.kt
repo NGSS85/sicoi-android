@@ -70,9 +70,6 @@ class OSFormViewModel @Inject constructor(
     // Novos campos do técnico para o formulário completo
     var externalService       by androidx.compose.runtime.mutableStateOf("nao")
     var externalJustification by androidx.compose.runtime.mutableStateOf("")
-    var externalCompany       by androidx.compose.runtime.mutableStateOf("")
-    var externalQty           by androidx.compose.runtime.mutableStateOf("")
-    var externalValue         by androidx.compose.runtime.mutableStateOf("")
     
     // Anexos carregados/adicionados
     var loadedExternalAttachments  by androidx.compose.runtime.mutableStateOf<List<AttachedFile>>(emptyList())
@@ -85,6 +82,7 @@ class OSFormViewModel @Inject constructor(
     // Estados de pausa
     var pauseState            by androidx.compose.runtime.mutableStateOf("idle")
     var pauseReason           by androidx.compose.runtime.mutableStateOf("")
+    val pauseObservations     = androidx.compose.runtime.mutableStateListOf<String>()
 
     // Apontamento final
     var descriptionExecuted   by androidx.compose.runtime.mutableStateOf("")
@@ -117,18 +115,16 @@ class OSFormViewModel @Inject constructor(
         // Campos do técnico
         externalService = "nao"
         externalJustification = ""
-        externalCompany = ""
-        externalQty = ""
-        externalValue = ""
         loadedExternalAttachments = emptyList()
         loadedPrintedOsAttachments = emptyList()
         loadedPhotoAttachments = emptyList()
         materialsList.clear()
         pauseState = "idle"
         pauseReason = ""
+        pauseObservations.clear()
         descriptionExecuted = ""
-        finalDate = ""
-        finalHour = ""
+        finalDate = today
+        finalHour = nowTime
         vistoExecutante = order.tecnicoResponsavel ?: defaultTechName
 
         // Parse do JSON da solucao_aplicada
@@ -152,9 +148,6 @@ class OSFormViewModel @Inject constructor(
                     
                     externalService = payload.externalService
                     externalJustification = payload.externalJustification
-                    externalCompany = payload.externalCompany
-                    externalQty = payload.externalQty
-                    externalValue = payload.externalValue
                     
                     loadedExternalAttachments = payload.externalAttachments
                     loadedPrintedOsAttachments = payload.printedOsAttachments
@@ -165,6 +158,8 @@ class OSFormViewModel @Inject constructor(
                     
                     pauseState = payload.pauseState
                     pauseReason = payload.pauseReason
+                    pauseObservations.clear()
+                    pauseObservations.addAll(payload.pauseObservations)
                     descriptionExecuted = payload.descriptionExecuted
                     finalDate = payload.finalDate
                     finalHour = payload.finalHour
@@ -459,15 +454,13 @@ class OSFormViewModel @Inject constructor(
                 assignedTechnician = vistoExecutante.ifBlank { order.tecnicoResponsavel ?: technicianName },
                 externalService = externalService,
                 externalJustification = externalJustification,
-                externalCompany = externalCompany,
-                externalQty = externalQty,
-                externalValue = externalValue,
                 externalAttachments = loadedExternalAttachments,
                 printedOsAttachments = updatedPrintedOsAttachments,
                 photoAttachments = updatedPhotoAttachments,
                 materials = materialsList.toList(),
                 pauseState = pauseState,
                 pauseReason = pauseReason,
+                pauseObservations = pauseObservations.toList(),
                 descriptionExecuted = descriptionExecuted,
                 finalDate = if (finalDate.isBlank() && pauseState != "active") {
                     java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())

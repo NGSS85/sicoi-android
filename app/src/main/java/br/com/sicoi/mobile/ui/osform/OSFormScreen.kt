@@ -37,6 +37,7 @@ import br.com.sicoi.mobile.ui.login.sicoiTextFieldColors
 import br.com.sicoi.mobile.data.model.*
 import br.com.sicoi.mobile.ui.theme.*
 import kotlinx.serialization.json.Json
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -70,6 +71,9 @@ fun OSFormScreen(
     // Estados para controle de exibição do histórico
     var isGridView by remember { mutableStateOf(false) }
     val expandedCardIds = remember { mutableStateMapOf<String, Boolean>() }
+
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val coroutineScope = rememberCoroutineScope()
 
     // Launcher para selecionar múltiplas fotos da galeria
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -162,6 +166,12 @@ fun OSFormScreen(
                                     onSuccess = onFinalized
                                 )
                             } else {
+                                // Atualiza data/hora com o momento exato do salvamento
+                                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                                val stf = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                                val now = java.util.Date()
+                                viewModel.finalDate = sdf.format(now)
+                                viewModel.finalHour = stf.format(now)
                                 viewModel.finalizeWorkOrder(
                                     technicianName = technicianName,
                                     serviceBitmaps = servicePhotoBitmaps,
@@ -217,64 +227,89 @@ fun OSFormScreen(
         )
     }
 
-    Scaffold(
-        containerColor = SicoiBackground,
-        topBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(SicoiSurface, SicoiBackground)))
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
-            ) {
-                // Linha do topo: seta de retorno + número da OS
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    IconButton(
-                        onClick = onNavigateBack,
-                        modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(SicoiCard)
-                    ) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = SicoiTextSecondary)
-                    }
+    val isNewOrder = workOrderId == "new" || workOrderId.isBlank() || workOrderId.startsWith("NEW")
+    val osNumber = if (isRequesterMode) {
+        "Gerado ao Salvar"
+    } else if (isNewOrder) {
+        "Nova O.S."
+    } else {
+        ((state as? OSFormUiState.Loaded)?.order?.numeroOs ?: "—")
+    }
 
-                    // Número da OS em destaque no canto direito
-                    val isNewOrder = workOrderId == "new" || workOrderId.isBlank() || workOrderId.startsWith("NEW")
-                    val osNumber = if (isRequesterMode) {
-                        "Gerado ao Salvar"
-                    } else if (isNewOrder) {
-                        "Nova O.S."
-                    } else {
-                        ((state as? OSFormUiState.Loaded)?.order?.numeroOs ?: "—")
-                    }
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
+                    Spacer(modifier = Modifier.height(24.dp))
                     Surface(
                         shape = RoundedCornerShape(10.dp),
                         color = SicoiOrange.copy(alpha = 0.15f),
-                        border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.5f))
+                        border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.5f)),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            modifier = Modifier.padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.Center
                         ) {
                             Icon(
                                 if (isNewOrder) Icons.Default.AddCircle else Icons.Default.Tag,
                                 contentDescription = null,
                                 tint = SicoiOrange,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(16.dp)
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 osNumber,
-                                style = MaterialTheme.typography.titleSmall.copy(
+                                style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 14.sp,
                                     color = SicoiOrange
                                 )
                             )
                         }
                     }
+
+                    CentralDoSolicitanteContent(
+                        isRequesterMode = isRequesterMode,
+                        viewModel = viewModel,
+                        isGridView = isGridView,
+                        onGridViewChange = { isGridView = it },
+                        expandedCardIds = expandedCardIds
+                    )
                 }
+            }
+        }
+    ) {
+        Scaffold(
+            containerColor = SicoiBackground,
+            topBar = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Brush.verticalGradient(listOf(SicoiSurface, SicoiBackground)))
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                ) {
+                    // Linha do topo: seta de retorno + botão menu
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        IconButton(
+                            onClick = onNavigateBack,
+                            modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(SicoiCard)
+                        ) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = SicoiTextSecondary)
+                        }
+
+                        IconButton(
+                            onClick = { coroutineScope.launch { drawerState.open() } },
+                            modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(SicoiCard)
+                        ) {
+                            Icon(Icons.Default.Menu, contentDescription = "Menu Lateral", tint = SicoiTextSecondary)
+                        }
+                    }
 
                 // Títulos abaixo da seta
                 Column(
@@ -295,7 +330,7 @@ fun OSFormScreen(
                         if (isRequesterMode) "Formulário do Solicitante" else "Formulario do Técnico",
                         style = MaterialTheme.typography.headlineSmall.copy(
                             fontWeight = FontWeight.ExtraBold,
-                            fontSize = 20.sp,
+                            fontSize = 24.sp,
                             color = SicoiTextPrimary
                         )
                     )
@@ -789,6 +824,31 @@ fun OSFormScreen(
                                 }
                             }
                         } else {
+                            // ── Subtítulo "Intervenções" ──────────────────────
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(4.dp)
+                                        .background(SicoiOrange, shape = RoundedCornerShape(2.dp))
+                                )
+                                Text(
+                                    "Intervenções",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 17.sp
+                                    ),
+                                    color = SicoiOrange
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                                HorizontalDivider(
+                                    modifier = Modifier.weight(1f),
+                                    color = SicoiOrange.copy(alpha = 0.3f)
+                                )
+                            }
                             TechnicianExecutionSection(
                                 viewModel = viewModel,
                                 serviceBitmaps = servicePhotoBitmaps,
@@ -885,193 +945,202 @@ fun OSFormScreen(
                             }
                         }
 
-                        // ─── Central do Solicitante (Histórico) ───────────────
-                        if (isRequesterMode) {
-                            Spacer(modifier = Modifier.height(16.dp))
-                            HorizontalDivider(color = SicoiDivider)
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            // Cabeçalho da seção de histórico com opção Quadro/Linha
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(38.dp)
-                                            .background(SicoiBlue.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(Icons.Default.History, contentDescription = null, tint = SicoiBlue, modifier = Modifier.size(20.dp))
-                                    }
-                                    Column {
-                                        Text("Central do Solicitante", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
-                                        Text("Acompanhe o andamento das solicitações", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
-                                    }
-                                }
-
-                                // Seletor Linha / Quadro
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    listOf(
-                                        false to "Linha",
-                                        true to "Quadro"
-                                    ).forEach { (gridMode, label) ->
-                                        val isSel = isGridView == gridMode
-                                        Surface(
-                                            modifier = Modifier.clickable { isGridView = gridMode },
-                                            shape = RoundedCornerShape(8.dp),
-                                            color = if (isSel) SicoiOrange.copy(alpha = 0.2f) else Color.Transparent,
-                                            border = BorderStroke(1.dp, if (isSel) SicoiOrange.copy(alpha = 0.5f) else Color.Transparent)
-                                        ) {
-                                            Text(
-                                                text = label,
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
-                                                    color = if (isSel) SicoiOrange else SicoiTextMuted
-                                                ),
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            if (!viewModel.loadingHistory && viewModel.allWorkOrders.isNotEmpty()) {
-                                val openCount = viewModel.allWorkOrders.count { !(it.status.trim().equals("Finalizada", ignoreCase = true) || it.status.trim().equals("Finalizado", ignoreCase = true)) }
-                                val closedCount = viewModel.allWorkOrders.count { it.status.trim().equals("Finalizada", ignoreCase = true) || it.status.trim().equals("Finalizado", ignoreCase = true) }
-                                
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    // Badge Abertas
-                                    Surface(
-                                        shape = RoundedCornerShape(10.dp),
-                                        color = SicoiOrange.copy(alpha = 0.12f),
-                                        border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.3f)),
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.Center
-                                        ) {
-                                            Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(SicoiOrange))
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text(
-                                                text = "Abertas: $openCount",
-                                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                                color = SicoiOrange
-                                            )
-                                        }
-                                    }
-
-                                    // Badge Finalizadas
-                                    Surface(
-                                        shape = RoundedCornerShape(10.dp),
-                                        color = SicoiSuccess.copy(alpha = 0.12f),
-                                        border = BorderStroke(1.dp, SicoiSuccess.copy(alpha = 0.3f)),
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.Center
-                                        ) {
-                                            Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(SicoiSuccess))
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text(
-                                                text = "Finalizadas: $closedCount",
-                                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                                color = SicoiSuccess
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            if (viewModel.loadingHistory) {
-                                Box(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(color = SicoiOrange)
-                                }
-                            } else if (viewModel.allWorkOrders.isEmpty()) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .border(BorderStroke(1.dp, SicoiDivider), RoundedCornerShape(12.dp))
-                                        .background(SicoiSurface)
-                                        .padding(vertical = 24.dp, horizontal = 16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        "Nenhuma solicitação encontrada.",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = SicoiTextMuted,
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
-                            } else {
-                                if (isGridView) {
-                                    val chunks = viewModel.allWorkOrders.chunked(2)
-                                    Column(
-                                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        chunks.forEach { rowItems ->
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                            ) {
-                                                rowItems.forEach { item ->
-                                                    Box(modifier = Modifier.weight(1f)) {
-                                                        OSHistoryCard(
-                                                            item = item,
-                                                            isExpanded = expandedCardIds[item.id] == true,
-                                                            onToggleExpand = { expandedCardIds[item.id] = !(expandedCardIds[item.id] == true) }
-                                                        )
-                                                    }
-                                                }
-                                                if (rowItems.size == 1) {
-                                                    Spacer(modifier = Modifier.weight(1f))
-                                                }
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    Column(
-                                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        viewModel.allWorkOrders.forEach { item ->
-                                            OSHistoryCard(
-                                                item = item,
-                                                isExpanded = expandedCardIds[item.id] == true,
-                                                onToggleExpand = { expandedCardIds[item.id] = !(expandedCardIds[item.id] == true) }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
                         Spacer(modifier = Modifier.height(20.dp))
                     }
                 }
             }
 
             else -> {}
+        }
+    }
+    } // End of ModalNavigationDrawer
+}
+
+@Composable
+fun CentralDoSolicitanteContent(
+    isRequesterMode: Boolean,
+    viewModel: OSFormViewModel,
+    isGridView: Boolean,
+    onGridViewChange: (Boolean) -> Unit,
+    expandedCardIds: MutableMap<String, Boolean>
+) {
+    if (isRequesterMode) {
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(color = SicoiDivider)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Cabeçalho da seção de histórico com opção Quadro/Linha
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .background(SicoiBlue.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.History, contentDescription = null, tint = SicoiBlue, modifier = Modifier.size(20.dp))
+                }
+                Column {
+                    Text("Central do Solicitante", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
+                    Text("Acompanhe o andamento das solicitações", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
+                }
+            }
+
+            // Seletor Linha / Quadro
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                listOf(
+                    false to "Linha",
+                    true to "Quadro"
+                ).forEach { (gridMode, label) ->
+                    val isSel = isGridView == gridMode
+                    Surface(
+                        modifier = Modifier.clickable { onGridViewChange(gridMode) },
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isSel) SicoiOrange.copy(alpha = 0.2f) else Color.Transparent,
+                        border = BorderStroke(1.dp, if (isSel) SicoiOrange.copy(alpha = 0.5f) else Color.Transparent)
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSel) SicoiOrange else SicoiTextMuted
+                            ),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        if (!viewModel.loadingHistory && viewModel.allWorkOrders.isNotEmpty()) {
+            val openCount = viewModel.allWorkOrders.count { !(it.status.trim().equals("Finalizada", ignoreCase = true) || it.status.trim().equals("Finalizado", ignoreCase = true)) }
+            val closedCount = viewModel.allWorkOrders.count { it.status.trim().equals("Finalizada", ignoreCase = true) || it.status.trim().equals("Finalizado", ignoreCase = true) }
+            
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Badge Abertas
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = SicoiOrange.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.3f)),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(SicoiOrange))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Abertas: $openCount",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = SicoiOrange
+                        )
+                    }
+                }
+
+                // Badge Finalizadas
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = SicoiSuccess.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, SicoiSuccess.copy(alpha = 0.3f)),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(SicoiSuccess))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Finalizadas: $closedCount",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = SicoiSuccess
+                        )
+                    }
+                }
+            }
+        }
+
+        if (viewModel.loadingHistory) {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = SicoiOrange)
+            }
+        } else if (viewModel.allWorkOrders.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(BorderStroke(1.dp, SicoiDivider), RoundedCornerShape(12.dp))
+                    .background(SicoiSurface)
+                    .padding(vertical = 24.dp, horizontal = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "Nenhuma solicitação encontrada.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = SicoiTextMuted,
+                    textAlign = TextAlign.Center
+                )
+            }
+        } else {
+            if (isGridView) {
+                val chunks = viewModel.allWorkOrders.chunked(2)
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    chunks.forEach { rowItems ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            rowItems.forEach { item ->
+                                Box(modifier = Modifier.weight(1f)) {
+                                    OSHistoryCard(
+                                        item = item,
+                                        isExpanded = expandedCardIds[item.id] == true,
+                                        onToggleExpand = { expandedCardIds[item.id] = !(expandedCardIds[item.id] == true) }
+                                    )
+                                }
+                            }
+                            if (rowItems.size == 1) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                }
+            } else {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    viewModel.allWorkOrders.forEach { item ->
+                        OSHistoryCard(
+                            item = item,
+                            isExpanded = expandedCardIds[item.id] == true,
+                            onToggleExpand = { expandedCardIds[item.id] = !(expandedCardIds[item.id] == true) }
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -1089,7 +1158,7 @@ private fun TechnicianExecutionSection(
 ) {
     val context = LocalContext.current
     
-    // Card 1: Controle de Pausa da O.S.
+    // Card 1: Controle de Pausa da O.S. + Serviço Externo
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SicoiCard),
@@ -1099,6 +1168,7 @@ private fun TechnicianExecutionSection(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // ── Cabeçalho: Apontamento de Pausas ──
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -1115,12 +1185,20 @@ private fun TechnicianExecutionSection(
                     Text("Apontamento de Pausas", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
                     Text("Pausar a execução da ordem de serviço", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
                 }
-                
                 // Botão de Toggle Pausa
                 val isPaused = viewModel.pauseState == "active"
                 Button(
                     onClick = {
-                        viewModel.pauseState = if (isPaused) "inactive" else "active"
+                        if (isPaused) {
+                            if (viewModel.pauseReason.isNotBlank()) {
+                                val date = java.text.SimpleDateFormat("dd/MM HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+                                viewModel.pauseObservations.add("$date - ${viewModel.pauseReason}")
+                                viewModel.pauseReason = ""
+                            }
+                            viewModel.pauseState = "inactive"
+                        } else {
+                            viewModel.pauseState = "active"
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isPaused) SicoiError else SicoiOrange
@@ -1147,21 +1225,33 @@ private fun TechnicianExecutionSection(
                     colors = sicoiTextFieldColors()
                 )
             }
-        }
-    }
 
-    Spacer(modifier = Modifier.height(14.dp))
+            if (viewModel.pauseObservations.isNotEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        "Histórico de Pausas:",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = SicoiTextSecondary)
+                    )
+                    viewModel.pauseObservations.forEach { obs ->
+                        Text(
+                            text = obs,
+                            style = MaterialTheme.typography.bodySmall.copy(color = SicoiTextMuted),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(SicoiSurface, RoundedCornerShape(8.dp))
+                                .border(1.dp, SicoiDivider, RoundedCornerShape(8.dp))
+                                .padding(8.dp)
+                        )
+                    }
+                }
+            }
 
-    // Card 2: Serviço Externo
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SicoiCard),
-        border = BorderStroke(1.dp, SicoiBlue.copy(alpha = 0.3f))
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+            HorizontalDivider(color = SicoiDivider)
+
+            // ── Sub-seção: Serviço Externo ──
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -1175,22 +1265,24 @@ private fun TechnicianExecutionSection(
                     Icon(Icons.Default.Settings, contentDescription = null, tint = SicoiBlue, modifier = Modifier.size(20.dp))
                 }
                 Column {
-                    Text("Serviço Externo", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
+                    Text("Serviço Externo", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = SicoiTextPrimary)
                     Text("Necessidade de intervenção externa", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
                 }
             }
 
-            HorizontalDivider(color = SicoiDivider)
+            Text(
+                "Necessidade de Serviço Externo?",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = SicoiTextSecondary,
+                    fontWeight = FontWeight.Bold
+                )
+            )
 
-            Text("Necessidade de Serviço Externo?", style = MaterialTheme.typography.labelSmall, color = SicoiTextSecondary)
-            
+            val isExternal = viewModel.externalService == "sim"
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val isExternal = viewModel.externalService == "sim"
-                
-                // Botão "Sim"
                 Button(
                     onClick = { viewModel.externalService = "sim" },
                     modifier = Modifier.weight(1f),
@@ -1202,15 +1294,10 @@ private fun TechnicianExecutionSection(
                 ) {
                     Text("Sim", color = if (isExternal) Color.White else SicoiTextSecondary)
                 }
-
-                // Botão "Não"
                 Button(
-                    onClick = { 
+                    onClick = {
                         viewModel.externalService = "nao"
                         viewModel.externalJustification = ""
-                        viewModel.externalCompany = ""
-                        viewModel.externalQty = ""
-                        viewModel.externalValue = ""
                     },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
@@ -1223,51 +1310,19 @@ private fun TechnicianExecutionSection(
                 }
             }
 
-            if (viewModel.externalService == "sim") {
+            // Campos extras que aparecem ao selecionar "Sim"
+            if (isExternal) {
+                // Justificativa do Técnico
                 OutlinedTextField(
                     value = viewModel.externalJustification,
                     onValueChange = { viewModel.externalJustification = it },
-                    placeholder = { Text("Justificativa...", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
-                    label = { Text("Justificativa / Obs") },
+                    placeholder = { Text("Descreva o motivo da necessidade...", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
+                    label = { Text("Justificativa do Técnico") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
+                    minLines = 2,
                     colors = sicoiTextFieldColors()
                 )
-
-                OutlinedTextField(
-                    value = viewModel.externalCompany,
-                    onValueChange = { viewModel.externalCompany = it },
-                    placeholder = { Text("Empresa contratada...", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
-                    label = { Text("Para Quem (Empresa)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = sicoiTextFieldColors()
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = viewModel.externalQty,
-                        onValueChange = { viewModel.externalQty = it },
-                        placeholder = { Text("Ex: 1", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
-                        label = { Text("Qtd") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = sicoiTextFieldColors()
-                    )
-
-                    OutlinedTextField(
-                        value = viewModel.externalValue,
-                        onValueChange = { viewModel.externalValue = it },
-                        placeholder = { Text("R$ 0,00", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
-                        label = { Text("Valor Total") },
-                        modifier = Modifier.weight(2f),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = sicoiTextFieldColors()
-                    )
-                }
             }
         }
     }
@@ -1628,15 +1683,18 @@ private fun TechnicianExecutionSection(
 
             HorizontalDivider(color = SicoiDivider)
 
+            // Data e hora de encerramento — preenchidas automaticamente com o momento atual
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedTextField(
                     value = viewModel.finalDate,
-                    onValueChange = { viewModel.finalDate = it },
+                    onValueChange = {},
+                    readOnly = true,
                     placeholder = { Text("YYYY-MM-DD", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
                     label = { Text("Data Final") },
+                    leadingIcon = { Icon(Icons.Default.DateRange, contentDescription = null, tint = SicoiBlue, modifier = Modifier.size(18.dp)) },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(10.dp),
                     colors = sicoiTextFieldColors()
@@ -1644,14 +1702,22 @@ private fun TechnicianExecutionSection(
 
                 OutlinedTextField(
                     value = viewModel.finalHour,
-                    onValueChange = { viewModel.finalHour = it },
+                    onValueChange = {},
+                    readOnly = true,
                     placeholder = { Text("HH:MM", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
                     label = { Text("Hora") },
+                    leadingIcon = { Icon(Icons.Default.Schedule, contentDescription = null, tint = SicoiBlue, modifier = Modifier.size(18.dp)) },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(10.dp),
                     colors = sicoiTextFieldColors()
                 )
             }
+            Text(
+                "⏱ Preenchido automaticamente no momento de salvar",
+                style = MaterialTheme.typography.labelSmall,
+                color = SicoiTextMuted,
+                modifier = Modifier.padding(top = 2.dp)
+            )
 
             OutlinedTextField(
                 value = viewModel.vistoExecutante,
