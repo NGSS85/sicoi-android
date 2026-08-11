@@ -155,7 +155,7 @@ fun WorkOrdersScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
                             .background(SicoiWarning.copy(alpha = 0.12f))
-                            .border(1.dp, SicoiWarning.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                            .border(1.dp, SicoiWarningBorder, RoundedCornerShape(12.dp))
                             .clickable {
                                 coroutineScope.launch { drawerState.close() }
                                 onNavigateToPausedOrders(technicianName)
@@ -194,7 +194,7 @@ fun WorkOrdersScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
                             .background(SicoiOrange.copy(alpha = 0.12f))
-                            .border(1.dp, SicoiOrange.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                            .border(1.dp, SicoiOrangeBorder, RoundedCornerShape(12.dp))
                             .clickable {
                                 coroutineScope.launch { drawerState.close() }
                                 onNavigateToHistory(technicianName)
@@ -298,15 +298,23 @@ fun WorkOrdersScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        technicianName,
+                        technicianName.uppercase(),
                         style = MaterialTheme.typography.headlineLarge.copy(
-                            fontSize = 34.sp,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Black
+                            fontSize = 38.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                            letterSpacing = 1.sp,
+                            shadow = androidx.compose.ui.graphics.Shadow(
+                                color = SicoiOrange.copy(alpha = 0.6f),
+                                offset = androidx.compose.ui.geometry.Offset(0f, 4f),
+                                blurRadius = 8f
+                            )
                         ),
                         color = SicoiOrange,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        lineHeight = 42.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp)
                     )
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         "Bem vindo técnico, essas são suas atividades",
                         style = MaterialTheme.typography.bodyMedium.copy(
@@ -331,7 +339,7 @@ fun WorkOrdersScreen(
                             .weight(1f)
                             .clip(RoundedCornerShape(14.dp))
                             .background(Color.White.copy(alpha = 0.07f))
-                            .border(1.dp, SicoiOrange.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                            .border(1.dp, SicoiOrangeBorder, RoundedCornerShape(14.dp))
                             .padding(vertical = 16.dp, horizontal = 12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -359,7 +367,7 @@ fun WorkOrdersScreen(
                             .weight(1f)
                             .clip(RoundedCornerShape(14.dp))
                             .background(Color.White.copy(alpha = 0.07f))
-                            .border(1.dp, SicoiWarning.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                            .border(1.dp, SicoiWarningBorder, RoundedCornerShape(14.dp))
                             .padding(vertical = 16.dp, horizontal = 12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -390,7 +398,7 @@ fun WorkOrdersScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
                             .background(SicoiWarning.copy(alpha = 0.12f))
-                            .border(1.dp, SicoiWarning.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                            .border(1.dp, SicoiWarningBorder, RoundedCornerShape(8.dp))
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)

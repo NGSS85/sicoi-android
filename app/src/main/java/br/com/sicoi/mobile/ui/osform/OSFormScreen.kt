@@ -245,7 +245,7 @@ fun OSFormScreen(
                     Surface(
                         shape = RoundedCornerShape(10.dp),
                         color = SicoiOrange.copy(alpha = 0.15f),
-                        border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.5f)),
+                        border = BorderStroke(1.dp, SicoiOrangeBorder),
                         modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
                     ) {
                         Row(
@@ -487,7 +487,7 @@ fun OSFormScreen(
                                     Card(
                                         shape = RoundedCornerShape(16.dp),
                                         colors = CardDefaults.cardColors(containerColor = SicoiCard),
-                                        border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.3f))
+                                        border = BorderStroke(1.dp, SicoiOrangeBorder)
                                     ) {
                                         Column(
                                             modifier = Modifier.padding(16.dp),
@@ -540,7 +540,7 @@ fun OSFormScreen(
                                                 Text(
                                                     "Prioridade *",
                                                     style = MaterialTheme.typography.labelSmall.copy(
-                                                        color = androidx.compose.ui.graphics.Color.White,
+                                                        color = SicoiTextPrimary,
                                                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                                                         fontSize = 12.1.sp,
                                                         letterSpacing = 0.5.sp
@@ -592,7 +592,7 @@ fun OSFormScreen(
                                                 Text(
                                                     "Tipo de Manutenção *",
                                                     style = MaterialTheme.typography.labelSmall.copy(
-                                                        color = androidx.compose.ui.graphics.Color.White,
+                                                        color = SicoiTextPrimary,
                                                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                                                         fontSize = 12.1.sp,
                                                         letterSpacing = 0.5.sp
@@ -686,7 +686,7 @@ fun OSFormScreen(
                                                 Text(
                                                     "Descrição do Problema *",
                                                     style = MaterialTheme.typography.labelSmall.copy(
-                                                        color = androidx.compose.ui.graphics.Color.White,
+                                                        color = SicoiTextPrimary,
                                                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                                                         fontSize = 12.1.sp,
                                                         letterSpacing = 0.5.sp
@@ -715,7 +715,7 @@ fun OSFormScreen(
                                                 Text(
                                                     "Fotos do Problema (Opcional)",
                                                     style = MaterialTheme.typography.labelSmall.copy(
-                                                        color = androidx.compose.ui.graphics.Color.White,
+                                                        color = SicoiTextPrimary,
                                                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                                                         fontSize = 12.1.sp,
                                                         letterSpacing = 0.5.sp
@@ -728,7 +728,7 @@ fun OSFormScreen(
                                                     onClick = { photoPickerLauncher.launch("image/*") },
                                                     modifier = Modifier.fillMaxWidth(),
                                                     shape = RoundedCornerShape(10.dp),
-                                                    border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.5f)),
+                                                    border = BorderStroke(1.dp, SicoiOrangeBorder),
                                                     colors = ButtonDefaults.outlinedButtonColors(contentColor = SicoiOrange)
                                                 ) {
                                                     Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -1008,7 +1008,7 @@ fun CentralDoSolicitanteContent(
                         modifier = Modifier.clickable { onGridViewChange(gridMode) },
                         shape = RoundedCornerShape(8.dp),
                         color = if (isSel) SicoiOrange.copy(alpha = 0.2f) else Color.Transparent,
-                        border = BorderStroke(1.dp, if (isSel) SicoiOrange.copy(alpha = 0.5f) else Color.Transparent)
+                        border = BorderStroke(1.dp, if (isSel) SicoiOrangeBorder else Color.Transparent)
                     ) {
                         Text(
                             text = label,
@@ -1035,7 +1035,7 @@ fun CentralDoSolicitanteContent(
                 Surface(
                     shape = RoundedCornerShape(10.dp),
                     color = SicoiOrange.copy(alpha = 0.12f),
-                    border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.3f)),
+                    border = BorderStroke(1.dp, SicoiOrangeBorder),
                     modifier = Modifier.weight(1f)
                 ) {
                     Row(
@@ -1162,7 +1162,7 @@ private fun TechnicianExecutionSection(
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SicoiCard),
-        border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.3f))
+        border = BorderStroke(1.dp, SicoiOrangeBorder)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -1753,7 +1753,7 @@ private fun EditableOSField(
     val defaultLabelSize = 11.sp
     val defaultBodySize = 16.sp
 
-    val labelColor = if (isTab1) androidx.compose.ui.graphics.Color.White else SicoiTextSecondary
+    val labelColor = if (isTab1) SicoiTextPrimary else SicoiTextSecondary
     val labelWeight = if (isTab1) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
 
     Column {

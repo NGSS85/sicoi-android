@@ -462,7 +462,7 @@ private fun RequesterCard(technician: Technician, onClick: () -> Unit) {
             Surface(
                 shape = RoundedCornerShape(10.dp),
                 color = SicoiOrange.copy(alpha = 0.12f),
-                border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.35f))
+                border = BorderStroke(1.dp, SicoiOrangeBorder)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),

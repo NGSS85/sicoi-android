@@ -57,3 +57,7 @@ val SicoiTextSecondary: Color  @Composable get() = if (LocalThemeController.curr
 val SicoiTextMuted: Color      @Composable get() = if (LocalThemeController.current.isDarkTheme) SicoiTextMutedDark else SicoiTextMutedLight
 val SicoiDivider: Color        @Composable get() = if (LocalThemeController.current.isDarkTheme) SicoiDividerDark else SicoiDividerLight
 
+// Bordas com contraste melhorado para modo claro
+val SicoiOrangeBorder: Color   @Composable get() = if (LocalThemeController.current.isDarkTheme) SicoiOrange.copy(alpha = 0.4f) else SicoiOrangeDark.copy(alpha = 0.85f)
+val SicoiWarningBorder: Color  @Composable get() = if (LocalThemeController.current.isDarkTheme) SicoiWarning.copy(alpha = 0.4f) else SicoiWarning.copy(alpha = 0.85f)
+

@@ -221,7 +221,7 @@ fun TechniciansScreen(
                                 modifier = Modifier.fillMaxWidth(0.95f),
                                 shape = RoundedCornerShape(16.dp),
                                 colors = CardDefaults.cardColors(containerColor = SicoiCard),
-                                border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.3f))
+                                border = BorderStroke(1.dp, SicoiOrangeBorder)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(16.dp),
@@ -329,7 +329,7 @@ fun TechniciansScreen(
                                 modifier = Modifier.fillMaxWidth(0.95f),
                                 shape = RoundedCornerShape(16.dp),
                                 colors = CardDefaults.cardColors(containerColor = SicoiCard),
-                                border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.3f))
+                                border = BorderStroke(1.dp, SicoiOrangeBorder)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(16.dp),
