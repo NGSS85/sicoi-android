@@ -357,8 +357,17 @@ class OSFormViewModel @Inject constructor(
     ) {
         val order = (_state.value as? OSFormUiState.Loaded)?.order ?: return
 
-        if (descriptionExecuted.isBlank() && pauseState != "active") {
+        // Quando for serviço externo, apenas a justificativa é obrigatória
+        val isExternalService = externalService == "sim"
+        
+        if (!isExternalService && descriptionExecuted.isBlank() && pauseState != "active") {
             _state.value = OSFormUiState.Error("O campo 'Serviço Executado' é obrigatório para finalizar a O.S.")
+            return
+        }
+
+        // Valida justificativa quando serviço externo = sim
+        if (isExternalService && externalJustification.isBlank()) {
+            _state.value = OSFormUiState.Error("🚚 Informe a justificativa do serviço externo antes de salvar.")
             return
         }
 
@@ -442,27 +451,28 @@ class OSFormViewModel @Inject constructor(
                 pauseReason = pauseReason,
                 pauseObservations = pauseObservations.toList(),
                 descriptionExecuted = descriptionExecuted,
-                finalDate = if (finalDate.isBlank() && pauseState != "active") {
-                    java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
-                } else {
-                    finalDate
+                // Serviço externo: não finaliza a OS, deixa datas em branco
+                finalDate = when {
+                    isExternalService -> ""
+                    finalDate.isBlank() && pauseState != "active" -> java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+                    else -> finalDate
                 },
-                finalHour = if (finalHour.isBlank() && pauseState != "active") {
-                    java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
-                } else {
-                    finalHour
+                finalHour = when {
+                    isExternalService -> ""
+                    finalHour.isBlank() && pauseState != "active" -> java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+                    else -> finalHour
                 },
                 vistoExecutante = vistoExecutante.ifBlank { order.tecnicoResponsavel ?: technicianName }
             )
 
             val jsonString = "[RQ-11-DIGITAL]: " + Json.encodeToString(payload)
             
-            val status = if (payload.finalDate.isNotBlank() && pauseState != "active") {
-                "Finalizada"
-            } else if (pauseState == "active") {
-                "Pausada"
-            } else {
-                "Em Execução"
+            // Status: serviço externo não finaliza a OS (dashboard detecta pelo campo no JSON)
+            val status = when {
+                isExternalService -> "Em Execução"
+                pauseState == "active" -> "Pausada"
+                payload.finalDate.isNotBlank() -> "Finalizada"
+                else -> "Em Execução"
             }
 
             repository.finalizeWorkOrder(
@@ -478,10 +488,11 @@ class OSFormViewModel @Inject constructor(
             ).fold(
                 onSuccess = {
                     if (isOnline) {
-                        val msg = if (pauseState == "active")
-                            "⏸ O.S. pausada com sucesso! Ela aparecerá na lista de pausadas."
-                        else
-                            "✅ Ordem de Serviço salva com sucesso!"
+                        val msg = when {
+                            isExternalService -> "🚚 O.S. encaminhada para serviço externo com sucesso!"
+                            pauseState == "active" -> "⏸ O.S. pausada com sucesso! Ela aparecerá na lista de pausadas."
+                            else -> "✅ Ordem de Serviço salva com sucesso!"
+                        }
                         _state.value = OSFormUiState.SavedOnline(msg)
                     } else {
                         val msg = if (pauseState == "active")

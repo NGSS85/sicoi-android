@@ -36,8 +36,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import br.com.sicoi.mobile.ui.login.sicoiTextFieldColors
 import br.com.sicoi.mobile.data.model.*
 import br.com.sicoi.mobile.ui.theme.*
-import kotlinx.serialization.json.Json
 import kotlinx.coroutines.launch
+import coil.compose.AsyncImage
+import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -75,40 +76,73 @@ fun OSFormScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
 
-    // Launcher para selecionar múltiplas fotos da galeria
-    val photoPickerLauncher = rememberLauncherForActivityResult(
+    // 1. Launchers para o Solicitante
+    val requesterPhotoPickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetMultipleContents()
     ) { uris: List<Uri> ->
-        val newBitmaps = uris.mapNotNull { uri ->
-            context.contentResolver.openInputStream(uri)?.use {
-                BitmapFactory.decodeStream(it)
-            }
-        }
-        when (activeAttachmentSection) {
-            "requester" -> photoBitmaps = photoBitmaps + newBitmaps
-            "service" -> servicePhotoBitmaps = servicePhotoBitmaps + newBitmaps
-            "material" -> materialPhotoBitmaps = materialPhotoBitmaps + newBitmaps
-        }
+        val newBitmaps = uris.mapNotNull { uri -> decodeUriAsScaledBitmap(context, uri) }
+        photoBitmaps = photoBitmaps + newBitmaps
     }
 
-    // Launcher para fotografar imagens diretamente com a câmera do celular
-    val cameraPhotoLauncher = rememberLauncherForActivityResult(
+    val requesterCameraPhotoLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicturePreview()
     ) { bitmap: Bitmap? ->
-        bitmap?.let {
-            when (activeAttachmentSection) {
-                "requester" -> photoBitmaps = photoBitmaps + it
-                "service" -> servicePhotoBitmaps = servicePhotoBitmaps + it
-                "material" -> materialPhotoBitmaps = materialPhotoBitmaps + it
-            }
-        }
+        bitmap?.let { photoBitmaps = photoBitmaps + it }
     }
 
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+    val requesterCameraPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            cameraPhotoLauncher.launch(null)
+            requesterCameraPhotoLauncher.launch(null)
+        } else {
+            Toast.makeText(context, "Permissão de câmera negada", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // 2. Launchers para o Técnico (Serviço Executado)
+    val servicePhotoPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        val newBitmaps = uris.mapNotNull { uri -> decodeUriAsScaledBitmap(context, uri) }
+        servicePhotoBitmaps = servicePhotoBitmaps + newBitmaps
+    }
+
+    val serviceCameraPhotoLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicturePreview()
+    ) { bitmap: Bitmap? ->
+        bitmap?.let { servicePhotoBitmaps = servicePhotoBitmaps + it }
+    }
+
+    val serviceCameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            serviceCameraPhotoLauncher.launch(null)
+        } else {
+            Toast.makeText(context, "Permissão de câmera negada", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // 3. Launchers para o Técnico (Materiais Utilizados)
+    val materialPhotoPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        val newBitmaps = uris.mapNotNull { uri -> decodeUriAsScaledBitmap(context, uri) }
+        materialPhotoBitmaps = materialPhotoBitmaps + newBitmaps
+    }
+
+    val materialCameraPhotoLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicturePreview()
+    ) { bitmap: Bitmap? ->
+        bitmap?.let { materialPhotoBitmaps = materialPhotoBitmaps + it }
+    }
+
+    val materialCameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            materialCameraPhotoLauncher.launch(null)
         } else {
             Toast.makeText(context, "Permissão de câmera negada", Toast.LENGTH_SHORT).show()
         }
@@ -268,6 +302,65 @@ fun OSFormScreen(
                                 )
                             )
                         }
+                    }
+
+                    if (!isRequesterMode && viewModel.loadedPhotoAttachments.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "FOTOS DO SOLICITANTE",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.ExtraBold, 
+                                color = SicoiOrange,
+                                fontSize = 13.sp
+                            ),
+                            modifier = Modifier.padding(bottom = 2.dp)
+                        )
+                        Text(
+                            text = "Anexos originais da abertura da OS:",
+                            style = MaterialTheme.typography.bodySmall.copy(color = SicoiTextMuted, fontSize = 10.5.sp),
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        viewModel.loadedPhotoAttachments.forEachIndexed { index, file ->
+                            Card(
+                                shape = RoundedCornerShape(10.dp),
+                                colors = CardDefaults.cardColors(containerColor = SicoiSurface),
+                                border = BorderStroke(1.dp, SicoiDivider),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(150.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                ) {
+                                    AsyncImage(
+                                        model = file.url,
+                                        contentDescription = file.name,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomStart)
+                                            .background(Color.Black.copy(alpha = 0.65f))
+                                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "Anexo ${index + 1}",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 9.sp
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
 
                     CentralDoSolicitanteContent(
@@ -725,7 +818,9 @@ fun OSFormScreen(
 
                                                 // Botão 1: Anexar imagens e arquivos da galeria/dispositivo
                                                 OutlinedButton(
-                                                    onClick = { photoPickerLauncher.launch("image/*") },
+                                                    onClick = {
+                                                        requesterPhotoPickerLauncher.launch("image/*")
+                                                    },
                                                     modifier = Modifier.fillMaxWidth(),
                                                     shape = RoundedCornerShape(10.dp),
                                                     border = BorderStroke(1.dp, SicoiOrangeBorder),
@@ -749,9 +844,9 @@ fun OSFormScreen(
                                                     onClick = {
                                                         val permissionCheck = ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA)
                                                         if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
-                                                            cameraPhotoLauncher.launch(null)
+                                                            requesterCameraPhotoLauncher.launch(null)
                                                         } else {
-                                                            cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                                                            requesterCameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
                                                         }
                                                     },
                                                     modifier = Modifier.fillMaxWidth(),
@@ -856,16 +951,27 @@ fun OSFormScreen(
                                 materialBitmaps = materialPhotoBitmaps,
                                 onMaterialBitmapsChange = { materialPhotoBitmaps = it },
                                 onRequestAttach = { section ->
-                                    activeAttachmentSection = section
-                                    photoPickerLauncher.launch("image/*")
+                                    if (section == "service") {
+                                        servicePhotoPickerLauncher.launch("image/*")
+                                    } else {
+                                        materialPhotoPickerLauncher.launch("image/*")
+                                    }
                                 },
                                 onRequestCamera = { section ->
-                                    activeAttachmentSection = section
-                                    val permissionCheck = ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA)
-                                    if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
-                                        cameraPhotoLauncher.launch(null)
+                                    if (section == "service") {
+                                        val permissionCheck = ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA)
+                                        if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
+                                            serviceCameraPhotoLauncher.launch(null)
+                                        } else {
+                                            serviceCameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                                        }
                                     } else {
-                                        cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                                        val permissionCheck = ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA)
+                                        if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
+                                            materialCameraPhotoLauncher.launch(null)
+                                        } else {
+                                            materialCameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                                        }
                                     }
                                 }
                             )
@@ -1157,6 +1263,62 @@ private fun TechnicianExecutionSection(
     onRequestCamera: (String) -> Unit
 ) {
     val context = LocalContext.current
+
+    // Fotos anexadas pelo solicitante na abertura da OS (Exibidas para o Técnico)
+    if (viewModel.loadedPhotoAttachments.isNotEmpty()) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = SicoiCard),
+            border = BorderStroke(1.dp, SicoiOrangeBorder)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .background(SicoiOrange.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Image, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(20.dp))
+                    }
+                    Column {
+                        Text("Fotos do Solicitante", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
+                        Text("Fotos anexadas durante a abertura desta OS", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
+                    }
+                }
+
+                HorizontalDivider(color = SicoiDivider)
+
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(viewModel.loadedPhotoAttachments) { file ->
+                        Box(
+                            modifier = Modifier
+                                .size(90.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .border(1.dp, SicoiCardBorder, RoundedCornerShape(8.dp))
+                                .clickable {
+                                    Toast.makeText(context, "Visualizando foto do solicitante", Toast.LENGTH_SHORT).show()
+                                }
+                        ) {
+                            AsyncImage(
+                                model = file.url,
+                                contentDescription = file.name,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(14.dp))
+    }
     
     // Card 1: Controle de Pausa da O.S. + Serviço Externo
     Card(
@@ -2105,5 +2267,45 @@ private fun OSHistoryCard(
                 )
             }
         }
+    }
+}
+
+// Helper para decodificação segura de Bitmaps evitando OutOfMemoryError no Android
+private fun decodeUriAsScaledBitmap(context: android.content.Context, uri: Uri, maxDimension: Int = 1024): Bitmap? {
+    return try {
+        // 1. Abre e lê todos os bytes da imagem do ContentResolver em uma única leitura
+        val bytes = context.contentResolver.openInputStream(uri)?.use {
+            it.readBytes()
+        } ?: return null
+
+        // 2. Obtém as dimensões originais da imagem a partir dos bytes (sem decodificar na RAM)
+        val options = BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+        }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+
+        val width = options.outWidth
+        val height = options.outHeight
+        if (width <= 0 || height <= 0) return null
+
+        // 3. Calcula o fator de escala de amostragem (inSampleSize)
+        var inSampleSize = 1
+        if (width > maxDimension || height > maxDimension) {
+            val halfWidth = width / 2
+            val halfHeight = height / 2
+            while ((halfWidth / inSampleSize) >= maxDimension && (halfHeight / inSampleSize) >= maxDimension) {
+                inSampleSize *= 2
+            }
+        }
+
+        // 4. Decodifica efetivamente o bitmap a partir dos bytes na escala calculada
+        options.apply {
+            inJustDecodeBounds = false
+            this.inSampleSize = inSampleSize
+        }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
     }
 }
