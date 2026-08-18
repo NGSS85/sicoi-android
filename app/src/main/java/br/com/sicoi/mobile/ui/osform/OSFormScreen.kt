@@ -1,4 +1,4 @@
-package br.com.sicoi.mobile.ui.osform
+﻿package br.com.sicoi.mobile.ui.osform
 
 import android.content.pm.PackageManager
 import android.widget.Toast
@@ -49,6 +49,8 @@ fun OSFormScreen(
     technicianName: String,
     onNavigateBack: () -> Unit,
     onFinalized: () -> Unit,
+    onNavigateToHistory: ((String) -> Unit)? = null,
+    onNavigateToPausedOrders: ((String) -> Unit)? = null,
     isRequesterMode: Boolean = false,
     viewModel: OSFormViewModel = hiltViewModel()
 ) {
@@ -273,8 +275,119 @@ fun OSFormScreen(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
-                Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
+            ModalDrawerSheet(
+                drawerContainerColor = Color(0xFF1A1A1A)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .padding(16.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Título da sidebar
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.padding(bottom = 20.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Menu,
+                            contentDescription = null,
+                            tint = SicoiOrange,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            "Menu",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.ExtraBold
+                            ),
+                            color = Color.White
+                        )
+                    }
+
+                    if (!isRequesterMode) {
+                        // 1. Botão: Ordens em Pausa
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(SicoiWarning.copy(alpha = 0.12f))
+                                .border(1.dp, SicoiWarningBorder, RoundedCornerShape(12.dp))
+                                .clickable {
+                                    coroutineScope.launch { drawerState.close() }
+                                    onNavigateToPausedOrders?.invoke(technicianName)
+                                }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Pause,
+                                contentDescription = null,
+                                tint = SicoiWarning,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Column {
+                                Text(
+                                    "Ordens em Pausa",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = Color.White
+                                )
+                                Text(
+                                    "Ver ordens pausadas",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = SicoiWarning
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // 2. Botão: Histórico
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(SicoiOrange.copy(alpha = 0.12f))
+                                .border(1.dp, SicoiOrangeBorder, RoundedCornerShape(12.dp))
+                                .clickable {
+                                    coroutineScope.launch { drawerState.close() }
+                                    onNavigateToHistory?.invoke(technicianName)
+                                }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.History,
+                                contentDescription = null,
+                                tint = SicoiOrange,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Column {
+                                Text(
+                                    "Histórico",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = Color.White
+                                )
+                                Text(
+                                    "Minhas atividades",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = SicoiTextMuted
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
                     Spacer(modifier = Modifier.height(24.dp))
                     Surface(
                         shape = RoundedCornerShape(10.dp),

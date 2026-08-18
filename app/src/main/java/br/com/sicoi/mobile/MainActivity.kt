@@ -1,4 +1,4 @@
-package br.com.sicoi.mobile
+﻿package br.com.sicoi.mobile
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -32,7 +32,7 @@ class MainActivity : ComponentActivity() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    // Launcher de permissão de notificação (Android 13+)
+    // Launcher de permissÃ£o de notificaÃ§Ã£o (Android 13+)
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -42,15 +42,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Determina se já está logado
-
+        // Determina se jÃ¡ estÃ¡ logado
         val isLoggedIn = SupabaseClient.client.auth.currentUserOrNull() != null
-        val startRoute = if (isLoggedIn) Routes.modules("Técnico") else Routes.LOGIN
+        val startRoute = if (isLoggedIn) Routes.modules("TÃ©cnico") else Routes.LOGIN
 
-        // Configura o WorkManager para sincronização offline periódica
+        // Configura o WorkManager para sincronizaÃ§Ã£o offline periÃ³dica
         OfflineSyncWorker.schedule(this)
 
-        // Solicita permissão de notificação
+        // Solicita permissÃ£o de notificaÃ§Ã£o
         requestNotificationPermission()
 
         setContent {
@@ -71,12 +70,17 @@ class MainActivity : ComponentActivity() {
                 SicoiMobileTheme {
                     SicoiNavGraph(
                         startDestination = startRoute,
-                        onLogout = { SupabaseClient.client.auth.signOut() }
+                        onLogout = {
+                            scope.launch {
+                                try {
+                                    SupabaseClient.client.auth.signOut()
+                                } catch (_: Exception) {}
+                            }
+                        }
                     )
                 }
             }
         }
-
     }
 
     private fun requestNotificationPermission() {
@@ -86,5 +90,4 @@ class MainActivity : ComponentActivity() {
     private fun fetchAndStoreFcmToken() {
         // Firebase desativado para build local sem google-services.json
     }
-
 }

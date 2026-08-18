@@ -1,12 +1,14 @@
 package br.com.sicoi.mobile.ui.workorders
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -17,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -34,14 +37,33 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 import javax.inject.Inject
 
-// ── ViewModel ──────────────────────────────────────────────────────────────
 sealed class HistoryUiState {
     object Loading : HistoryUiState()
     data class Success(val orders: List<WorkOrder>) : HistoryUiState()
     data class Error(val message: String) : HistoryUiState()
 }
+
+enum class HistoryCategory {
+    FINALIZED,
+    EXTERNAL
+}
+
+enum class HistoryTimeFilter(val label: String) {
+    WEEK("Semana"),
+    MONTH("M\u00EAs"),
+    YEAR("Ano"),
+    ALL("Todos")
+}
+
+data class ChartBarData(
+    val label: String,
+    val finalizedCount: Int,
+    val externalCount: Int
+)
 
 @HiltViewModel
 class TechnicianHistoryViewModel @Inject constructor(
@@ -56,13 +78,12 @@ class TechnicianHistoryViewModel @Inject constructor(
             _state.value = HistoryUiState.Loading
             repository.fetchAllOrdersByTechnician(technicianName).fold(
                 onSuccess = { _state.value = HistoryUiState.Success(it) },
-                onFailure = { _state.value = HistoryUiState.Error(it.message ?: "Erro ao carregar histórico") }
+                onFailure = { _state.value = HistoryUiState.Error(it.message ?: "Erro ao carregar hist\u00F3rico") }
             )
         }
     }
 }
 
-// ── Tela principal ─────────────────────────────────────────────────────────
 @Composable
 fun TechnicianHistoryScreen(
     technicianName: String,
@@ -116,16 +137,14 @@ fun TechnicianHistoryScreen(
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            "Histórico de Atividades",
+                            "Hist\u00F3rico de Atividades",
                             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
-                            color = SicoiTextPrimary,
-                            textAlign = TextAlign.Center
+                            color = SicoiTextPrimary
                         )
                         Text(
-                            technicianName,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = SicoiOrange,
-                            textAlign = TextAlign.Center
+                            "T\u00E9cnico: $technicianName",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = SicoiTextMuted
                         )
                     }
                 }
@@ -136,9 +155,9 @@ fun TechnicianHistoryScreen(
             is HistoryUiState.Loading -> {
                 Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(color = SicoiOrange, modifier = Modifier.size(40.dp))
+                        CircularProgressIndicator(color = SicoiOrange, modifier = Modifier.size(44.dp))
                         Spacer(modifier = Modifier.height(12.dp))
-                        Text("Carregando histórico...", style = MaterialTheme.typography.bodyMedium, color = SicoiTextMuted)
+                        Text("Carregando hist\u00F3rico...", style = MaterialTheme.typography.bodyMedium, color = SicoiTextMuted)
                     }
                 }
             }
@@ -160,30 +179,60 @@ fun TechnicianHistoryScreen(
             is HistoryUiState.Success -> {
                 val allOrders = s.orders
 
-                val finalized = allOrders.filter {
-                    it.status.equals("Finalizada", ignoreCase = true) ||
-                    it.status.equals("Finalizado", ignoreCase = true) ||
-                    it.status.equals("Concluída", ignoreCase = true)
+                var selectedTimeFilter by remember { mutableStateOf(HistoryTimeFilter.ALL) }
+
+                val filteredOrders = remember(allOrders, selectedTimeFilter) {
+                    allOrders.filter { isOrderInTimeFilter(it, selectedTimeFilter) }
                 }
-                val paused = allOrders.filter {
-                    it.status.equals("Pausada", ignoreCase = true) ||
-                    it.status.equals("Pausado", ignoreCase = true)
+
+                val finalized = remember(filteredOrders) {
+                    filteredOrders.filter {
+                        it.status.equals("Finalizada", ignoreCase = true) ||
+                        it.status.equals("Finalizado", ignoreCase = true) ||
+                        it.status.equals("Conclu\u00EDda", ignoreCase = true) ||
+                        it.status.equals("Concluida", ignoreCase = true)
+                    }
                 }
-                val external = allOrders.filter {
-                    it.tecnicoResponsavel?.lowercase()?.trim() == "externo" ||
-                    it.solucaoAplicada?.contains("\"external_service\":\"Sim\"", ignoreCase = true) == true ||
-                    it.solucaoAplicada?.contains("\"external_service\":\"sim\"", ignoreCase = true) == true
+
+                val external = remember(filteredOrders) {
+                    filteredOrders.filter {
+                        it.tecnicoResponsavel?.lowercase()?.trim() == "externo" ||
+                        it.solucaoAplicada?.contains("\"external_service\":\"Sim\"", ignoreCase = true) == true ||
+                        it.solucaoAplicada?.contains("\"external_service\":\"sim\"", ignoreCase = true) == true
+                    }
+                }
+
+                val chartData = remember(filteredOrders, selectedTimeFilter) {
+                    buildChartData(filteredOrders, selectedTimeFilter)
                 }
 
                 var showFinalized by remember { mutableStateOf(false) }
-                var showPaused    by remember { mutableStateOf(false) }
                 var showExternal  by remember { mutableStateOf(false) }
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(paddingValues),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    // ── 1. Filtro de Período (Semana / Mês / Ano / Todos) ──
+                    item {
+                        TimeFilterSelector(
+                            selectedFilter = selectedTimeFilter,
+                            onFilterSelected = { selectedTimeFilter = it }
+                        )
+                    }
+
+                    // ── 2. Área com Gráfico de Barras Aprimorado ──
+                    item {
+                        HistoryBarChartCard(
+                            chartData = chartData,
+                            filter = selectedTimeFilter,
+                            totalFinalized = finalized.size,
+                            totalExternal = external.size
+                        )
+                    }
+
+                    // ── 3. Card OS Finalizadas ──
                     item {
                         HistoryDashboardCard(
                             icon = Icons.Default.CheckCircle,
@@ -198,30 +247,15 @@ fun TechnicianHistoryScreen(
                             enter = expandVertically(animationSpec = tween(300)),
                             exit = shrinkVertically(animationSpec = tween(300))
                         ) {
-                            HistoryOrderList(orders = finalized)
+                            HistoryOrderList(orders = finalized, category = HistoryCategory.FINALIZED)
                         }
                     }
-                    item {
-                        HistoryDashboardCard(
-                            icon = Icons.Default.Pause,
-                            label = "OS Pausadas",
-                            count = paused.size,
-                            accentColor = SicoiWarning,
-                            expanded = showPaused,
-                            onToggle = { showPaused = !showPaused }
-                        )
-                        AnimatedVisibility(
-                            visible = showPaused,
-                            enter = expandVertically(animationSpec = tween(300)),
-                            exit = shrinkVertically(animationSpec = tween(300))
-                        ) {
-                            HistoryOrderList(orders = paused)
-                        }
-                    }
+
+                    // ── 4. Card Serviço Externo ──
                     item {
                         HistoryDashboardCard(
                             icon = Icons.Default.CallMade,
-                            label = "Serviço Externo",
+                            label = "Servi\u00E7o Externo",
                             count = external.size,
                             accentColor = SicoiOrange,
                             expanded = showExternal,
@@ -232,17 +266,351 @@ fun TechnicianHistoryScreen(
                             enter = expandVertically(animationSpec = tween(300)),
                             exit = shrinkVertically(animationSpec = tween(300))
                         ) {
-                            HistoryOrderList(orders = external)
+                            HistoryOrderList(orders = external, category = HistoryCategory.EXTERNAL)
                         }
                     }
-                    item { Spacer(modifier = Modifier.height(24.dp)) }
+
+                    item { Spacer(modifier = Modifier.height(20.dp)) }
                 }
             }
         }
     }
 }
 
-// ── Card do Dashboard ──────────────────────────────────────────────────────
+// ── Componente Seletor de Período ────────────────────────────────────────────
+@Composable
+private fun TimeFilterSelector(
+    selectedFilter: HistoryTimeFilter,
+    onFilterSelected: (HistoryTimeFilter) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                Icons.Default.DateRange,
+                contentDescription = null,
+                tint = SicoiOrange,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                "Filtrar por per\u00EDodo:",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = SicoiTextSecondary
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(SicoiCard)
+                .border(1.dp, SicoiDivider, RoundedCornerShape(12.dp))
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            HistoryTimeFilter.entries.forEach { filter ->
+                val isSelected = selectedFilter == filter
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isSelected) SicoiOrange else Color.Transparent)
+                        .clickable { onFilterSelected(filter) }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = filter.label,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
+                            fontSize = 13.sp
+                        ),
+                        color = if (isSelected) Color.White else SicoiTextSecondary
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ── Componente Gráfico de Barras Aprimorado ──────────────────────────────────
+@Composable
+private fun HistoryBarChartCard(
+    chartData: List<ChartBarData>,
+    filter: HistoryTimeFilter,
+    totalFinalized: Int,
+    totalExternal: Int
+) {
+    val totalOrders = totalFinalized + totalExternal
+    val maxCount = chartData.maxOfOrNull { maxOf(it.finalizedCount, it.externalCount) }?.coerceAtLeast(1) ?: 1
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SicoiCard),
+        border = BorderStroke(1.dp, SicoiDivider)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Cabeçalho com Título e Badges Informativos
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(SicoiOrange.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.BarChart,
+                            contentDescription = null,
+                            tint = SicoiOrange,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Column {
+                        Text(
+                            "Desempenho de Atividades",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 15.sp
+                            ),
+                            color = SicoiTextPrimary
+                        )
+                        Text(
+                            "Filtro: ${filter.label} ($totalOrders ${if (totalOrders == 1) "ordem" else "ordens"})",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                            color = SicoiTextMuted
+                        )
+                    }
+                }
+
+                // Badges de Legenda com Totais
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(SicoiSuccess.copy(alpha = 0.12f))
+                            .border(1.dp, SicoiSuccess.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 7.dp, vertical = 3.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(SicoiSuccess))
+                            Text(
+                                "$totalFinalized",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
+                                color = SicoiSuccess
+                            )
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(SicoiOrange.copy(alpha = 0.12f))
+                            .border(1.dp, SicoiOrange.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 7.dp, vertical = 3.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(SicoiOrange))
+                            Text(
+                                "$totalExternal",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
+                                color = SicoiOrange
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Área Central das Barras
+            if (chartData.isEmpty() || totalOrders == 0) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(SicoiSurface)
+                        .border(1.dp, SicoiDivider, RoundedCornerShape(12.dp))
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(Icons.Default.Info, contentDescription = null, tint = SicoiTextMuted, modifier = Modifier.size(22.dp))
+                        Text(
+                            "Nenhuma atividade registrada neste per\u00EDodo",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SicoiTextMuted,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(145.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(SicoiSurface)
+                        .border(1.dp, SicoiDivider, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 10.dp, vertical = 12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        chartData.forEach { bar ->
+                            val finRatio = (bar.finalizedCount.toFloat() / maxCount.toFloat()).coerceIn(0f, 1f)
+                            val extRatio = (bar.externalCount.toFloat() / maxCount.toFloat()).coerceIn(0f, 1f)
+
+                            val animFinRatio by animateFloatAsState(
+                                targetValue = finRatio,
+                                animationSpec = tween(600),
+                                label = "finRatio"
+                            )
+                            val animExtRatio by animateFloatAsState(
+                                targetValue = extRatio,
+                                animationSpec = tween(600),
+                                label = "extRatio"
+                            )
+
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Bottom,
+                                modifier = Modifier.fillMaxHeight()
+                            ) {
+                                // Barras lado a lado
+                                Row(
+                                    verticalAlignment = Alignment.Bottom,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    modifier = Modifier.weight(1f, fill = false)
+                                ) {
+                                    // 1. Barra Finalizadas (Verde)
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        if (bar.finalizedCount > 0) {
+                                            Text(
+                                                "${bar.finalizedCount}",
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.ExtraBold
+                                                ),
+                                                color = SicoiSuccess
+                                            )
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .width(14.dp)
+                                                .height((78.dp * animFinRatio).coerceAtLeast(if (bar.finalizedCount > 0) 8.dp else 2.dp))
+                                                .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                                .background(
+                                                    if (bar.finalizedCount > 0)
+                                                        Brush.verticalGradient(listOf(SicoiSuccess, SicoiSuccess.copy(alpha = 0.65f)))
+                                                    else SolidColor(SicoiDivider.copy(alpha = 0.4f))
+                                                )
+                                        )
+                                    }
+
+                                    // 2. Barra Serviços Externos (Laranja)
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        if (bar.externalCount > 0) {
+                                            Text(
+                                                "${bar.externalCount}",
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.ExtraBold
+                                                ),
+                                                color = SicoiOrange
+                                            )
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .width(14.dp)
+                                                .height((78.dp * animExtRatio).coerceAtLeast(if (bar.externalCount > 0) 8.dp else 2.dp))
+                                                .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                                .background(
+                                                    if (bar.externalCount > 0)
+                                                        Brush.verticalGradient(listOf(SicoiOrange, SicoiOrange.copy(alpha = 0.65f)))
+                                                    else SolidColor(SicoiDivider.copy(alpha = 0.4f))
+                                                )
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                // Rótulo inferior da coluna
+                                Text(
+                                    text = bar.label,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = SicoiTextSecondary,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Rodapé com Legenda Detalhada
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(SicoiSuccess))
+                    Text(
+                        "Finalizadas: $totalFinalized",
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold),
+                        color = SicoiTextSecondary
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(SicoiOrange))
+                    Text(
+                        "Servi\u00E7o Externo: $totalExternal",
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold),
+                        color = SicoiTextSecondary
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ── Card do Dashboard ────────────────────────────────────────────────────────
 @Composable
 private fun HistoryDashboardCard(
     icon: ImageVector,
@@ -259,7 +627,7 @@ private fun HistoryDashboardCard(
         border = BorderStroke(1.dp, accentColor.copy(alpha = 0.25f))
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            modifier = Modifier.fillMaxWidth().padding(18.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -269,17 +637,17 @@ private fun HistoryDashboardCard(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(52.dp)
+                        .size(48.dp)
                         .clip(RoundedCornerShape(14.dp))
                         .background(accentColor.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(28.dp))
+                    Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(26.dp))
                 }
                 Column {
                     Text(
                         label,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 17.sp),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 16.sp),
                         color = SicoiTextPrimary
                     )
                     Text(
@@ -292,7 +660,7 @@ private fun HistoryDashboardCard(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
                     "$count",
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold, fontSize = 30.sp),
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold, fontSize = 28.sp),
                     color = accentColor
                 )
                 if (count > 0) {
@@ -324,96 +692,380 @@ private fun HistoryDashboardCard(
     }
 }
 
-// ── Lista de OS ────────────────────────────────────────────────────────────
+// ── Lista de OS ──────────────────────────────────────────────────────────────
 @Composable
-private fun HistoryOrderList(orders: List<WorkOrder>) {
+private fun HistoryOrderList(orders: List<WorkOrder>, category: HistoryCategory) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         if (orders.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(SicoiSurface).padding(20.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Nenhuma O.S. encontrada", style = MaterialTheme.typography.bodyMedium, color = SicoiTextMuted)
+                Text("Nenhuma O.S. encontrada para este per\u00EDodo", style = MaterialTheme.typography.bodyMedium, color = SicoiTextMuted)
             }
         } else {
-            orders.forEach { order -> HistoryOrderItem(order = order) }
+            orders.forEach { order ->
+                HistoryOrderItem(order = order, category = category)
+            }
         }
     }
 }
 
-// ── Item individual ────────────────────────────────────────────────────────
+// ── Item individual de Histórico ─────────────────────────────────────────────
 @Composable
-private fun HistoryOrderItem(order: WorkOrder) {
+private fun HistoryOrderItem(order: WorkOrder, category: HistoryCategory) {
+    val osNumber = remember(order.numeroOs, order.solucaoAplicada, order.id) {
+        order.numeroOs?.takeIf { it.isNotBlank() }
+            ?: extractJsonField(order.solucaoAplicada, "os_number")
+            ?: order.id.take(6).uppercase()
+    }
+
+    val equipamento = remember(order.equipamento, order.solucaoAplicada) {
+        order.equipamento?.takeIf { it.isNotBlank() }
+            ?: extractJsonField(order.solucaoAplicada, "equipment")
+            ?: "Equipamento Geral"
+    }
+
     val patrimonio = remember(order.solucaoAplicada) {
         extractJsonField(order.solucaoAplicada, "equipment_no")
             ?: extractJsonField(order.solucaoAplicada, "patrimonio")
-            ?: "—"
+            ?: "AVULSO"
     }
-    val resumo = remember(order.solucaoAplicada, order.descricaoProblema) {
-        val executed = extractJsonField(order.solucaoAplicada, "description_executed")
-        if (!executed.isNullOrBlank()) executed
-        else order.descricaoProblema?.take(120) ?: "—"
+
+    val comentarioTecnico = remember(order.solucaoAplicada, order.descricaoProblema, category) {
+        when (category) {
+            HistoryCategory.FINALIZED -> {
+                val executed = extractJsonField(order.solucaoAplicada, "description_executed")
+                val notes = extractJsonField(order.solucaoAplicada, "general_notes")
+                val techNotes = extractJsonField(order.solucaoAplicada, "technical_notes")
+                when {
+                    !executed.isNullOrBlank() -> executed
+                    !notes.isNullOrBlank() -> notes
+                    !techNotes.isNullOrBlank() -> techNotes
+                    !order.descricaoProblema.isNullOrBlank() -> order.descricaoProblema
+                    else -> "Servi\u00E7o finalizado com sucesso."
+                }
+            }
+            HistoryCategory.EXTERNAL -> {
+                val extJust = extractJsonField(order.solucaoAplicada, "external_justification")
+                val toExec = extractJsonField(order.solucaoAplicada, "description_to_execute")
+                when {
+                    !extJust.isNullOrBlank() -> extJust
+                    !toExec.isNullOrBlank() -> toExec
+                    !order.descricaoProblema.isNullOrBlank() -> order.descricaoProblema
+                    else -> "Sem justificativa de servi\u00E7o externo registrada."
+                }
+            }
+        }
+    }
+
+    val (badgeText, badgeColor, commentLabelColor) = when (category) {
+        HistoryCategory.FINALIZED -> Triple("Finalizada", SicoiSuccess, SicoiSuccess)
+        HistoryCategory.EXTERNAL -> Triple("Servi\u00E7o Externo", SicoiOrange, SicoiOrange)
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = SicoiSurface),
         border = BorderStroke(1.dp, SicoiDivider)
     ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Linha 1: Número da OS e Badge de Status
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Icon(Icons.Default.Assignment, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(18.dp))
-                    Text(
-                        "OS ${order.numeroOs ?: "S/N"}",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold, fontSize = 16.sp),
-                        color = SicoiTextPrimary
-                    )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(SicoiCard)
+                            .border(1.dp, SicoiDivider, RoundedCornerShape(6.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            "OS N\u00BA $osNumber",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 15.sp
+                            ),
+                            color = SicoiOrange
+                        )
+                    }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Icon(Icons.Default.Tag, contentDescription = null, tint = SicoiTextMuted, modifier = Modifier.size(14.dp))
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(badgeColor.copy(alpha = 0.12f))
+                        .border(1.dp, badgeColor.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
                     Text(
-                        patrimonio,
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = SicoiTextSecondary
+                        badgeText,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = badgeColor
                     )
                 }
             }
-            if (!order.equipamento.isNullOrBlank()) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Icon(Icons.Default.PrecisionManufacturing, contentDescription = null, tint = SicoiTextMuted, modifier = Modifier.size(15.dp))
+
+            // Linha 2: Nome do Equipamento e Patrimônio
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        Icons.Default.PrecisionManufacturing,
+                        contentDescription = null,
+                        tint = SicoiTextMuted,
+                        modifier = Modifier.size(16.dp)
+                    )
                     Text(
-                        order.equipamento,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
+                        equipamento,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
                         color = SicoiTextPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(SicoiCard)
+                        .border(1.dp, SicoiDivider, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 7.dp, vertical = 2.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Tag,
+                            contentDescription = null,
+                            tint = SicoiTextMuted,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Text(
+                            "PAT: $patrimonio",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            ),
+                            color = SicoiTextSecondary
+                        )
+                    }
+                }
             }
-            if (resumo != "—") {
-                Divider(color = SicoiDivider)
-                Text(
-                    resumo,
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                    color = SicoiTextSecondary,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
-                )
+
+            // Linha 3: Comentário do Técnico
+            if (comentarioTecnico.isNotBlank()) {
+                Divider(color = SicoiDivider, modifier = Modifier.padding(vertical = 2.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(SicoiCard.copy(alpha = 0.5f))
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        "Coment\u00E1rio do T\u00E9cnico:",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp
+                        ),
+                        color = commentLabelColor
+                    )
+                    Text(
+                        "\"$comentarioTecnico\"",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 12.sp,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                        ),
+                        color = SicoiTextSecondary,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
     }
 }
 
-// ── Helper ─────────────────────────────────────────────────────────────────
+// ── Funções de Gráfico e Filtros de Data ──────────────────────────────────────
+private fun buildChartData(orders: List<WorkOrder>, filter: HistoryTimeFilter): List<ChartBarData> {
+    val cal = Calendar.getInstance()
+    val sdfDay = SimpleDateFormat("EEE", Locale("pt", "BR"))
+    val sdfMonth = SimpleDateFormat("MMM", Locale("pt", "BR"))
+
+    return when (filter) {
+        HistoryTimeFilter.WEEK -> {
+            val days = mutableListOf<ChartBarData>()
+            for (i in 6 downTo 0) {
+                val dayCal = Calendar.getInstance().apply {
+                    add(Calendar.DAY_OF_YEAR, -i)
+                }
+                val rawLabel = sdfDay.format(dayCal.time).replace(".", "").trim()
+                val dayLabel = if (rawLabel.isNotEmpty()) rawLabel.substring(0, 1).uppercase() + rawLabel.substring(1) else "Dia"
+
+                val dayOrders = orders.filter { o ->
+                    val millis = getOrderDateMillis(o) ?: return@filter false
+                    val oCal = Calendar.getInstance().apply { timeInMillis = millis }
+                    oCal.get(Calendar.YEAR) == dayCal.get(Calendar.YEAR) &&
+                    oCal.get(Calendar.DAY_OF_YEAR) == dayCal.get(Calendar.DAY_OF_YEAR)
+                }
+
+                val fin = dayOrders.count { it.status.equals("Finalizada", true) || it.status.equals("Finalizado", true) || it.status.equals("Conclu\u00EDda", true) || it.status.equals("Concluida", true) }
+                val ext = dayOrders.count { it.tecnicoResponsavel?.lowercase()?.trim() == "externo" || it.solucaoAplicada?.contains("\"external_service\":\"Sim\"", true) == true }
+                days.add(ChartBarData(label = dayLabel, finalizedCount = fin, externalCount = ext))
+            }
+            days
+        }
+        HistoryTimeFilter.MONTH -> {
+            listOf(
+                ChartBarData("Sem 1", 0, 0),
+                ChartBarData("Sem 2", 0, 0),
+                ChartBarData("Sem 3", 0, 0),
+                ChartBarData("Sem 4", 0, 0)
+            ).mapIndexed { idx, item ->
+                val startDay = idx * 7 + 1
+                val endDay = (idx + 1) * 7
+                val weekOrders = orders.filter { o ->
+                    val millis = getOrderDateMillis(o) ?: return@filter false
+                    val oCal = Calendar.getInstance().apply { timeInMillis = millis }
+                    val dayOfMonth = oCal.get(Calendar.DAY_OF_MONTH)
+                    dayOfMonth in startDay..endDay
+                }
+                val fin = weekOrders.count { it.status.equals("Finalizada", true) || it.status.equals("Finalizado", true) || it.status.equals("Conclu\u00EDda", true) || it.status.equals("Concluida", true) }
+                val ext = weekOrders.count { it.tecnicoResponsavel?.lowercase()?.trim() == "externo" || it.solucaoAplicada?.contains("\"external_service\":\"Sim\"", true) == true }
+                item.copy(finalizedCount = fin, externalCount = ext)
+            }
+        }
+        HistoryTimeFilter.YEAR -> {
+            val months = mutableListOf<ChartBarData>()
+            for (i in 5 downTo 0) {
+                val mCal = Calendar.getInstance().apply {
+                    add(Calendar.MONTH, -i)
+                }
+                val rawLabel = sdfMonth.format(mCal.time).replace(".", "").trim()
+                val mLabel = if (rawLabel.isNotEmpty()) rawLabel.substring(0, 1).uppercase() + rawLabel.substring(1) else "M\u00EAs"
+
+                val mOrders = orders.filter { o ->
+                    val millis = getOrderDateMillis(o) ?: return@filter false
+                    val oCal = Calendar.getInstance().apply { timeInMillis = millis }
+                    oCal.get(Calendar.YEAR) == mCal.get(Calendar.YEAR) &&
+                    oCal.get(Calendar.MONTH) == mCal.get(Calendar.MONTH)
+                }
+
+                val fin = mOrders.count { it.status.equals("Finalizada", true) || it.status.equals("Finalizado", true) || it.status.equals("Conclu\u00EDda", true) || it.status.equals("Concluida", true) }
+                val ext = mOrders.count { it.tecnicoResponsavel?.lowercase()?.trim() == "externo" || it.solucaoAplicada?.contains("\"external_service\":\"Sim\"", true) == true }
+                months.add(ChartBarData(label = mLabel, finalizedCount = fin, externalCount = ext))
+            }
+            months
+        }
+        HistoryTimeFilter.ALL -> {
+            val months = mutableListOf<ChartBarData>()
+            for (i in 5 downTo 0) {
+                val mCal = Calendar.getInstance().apply {
+                    add(Calendar.MONTH, -i)
+                }
+                val rawLabel = sdfMonth.format(mCal.time).replace(".", "").trim()
+                val mLabel = if (rawLabel.isNotEmpty()) rawLabel.substring(0, 1).uppercase() + rawLabel.substring(1) else "M\u00EAs"
+
+                val mOrders = orders.filter { o ->
+                    val millis = getOrderDateMillis(o) ?: return@filter false
+                    val oCal = Calendar.getInstance().apply { timeInMillis = millis }
+                    oCal.get(Calendar.YEAR) == mCal.get(Calendar.YEAR) &&
+                    oCal.get(Calendar.MONTH) == mCal.get(Calendar.MONTH)
+                }
+
+                val fin = mOrders.count { it.status.equals("Finalizada", true) || it.status.equals("Finalizado", true) || it.status.equals("Conclu\u00EDda", true) || it.status.equals("Concluida", true) }
+                val ext = mOrders.count { it.tecnicoResponsavel?.lowercase()?.trim() == "externo" || it.solucaoAplicada?.contains("\"external_service\":\"Sim\"", true) == true }
+                months.add(ChartBarData(label = mLabel, finalizedCount = fin, externalCount = ext))
+            }
+            months
+        }
+    }
+}
+
+private fun getOrderDateMillis(order: WorkOrder): Long? {
+    val rawDate = order.dataFim
+        ?: order.dataAbertura
+        ?: extractJsonField(order.solucaoAplicada, "final_date")
+        ?: extractJsonField(order.solucaoAplicada, "date")
+        ?: return null
+    return parseDateToMillis(rawDate)
+}
+
+private fun isOrderInTimeFilter(order: WorkOrder, filter: HistoryTimeFilter): Boolean {
+    if (filter == HistoryTimeFilter.ALL) return true
+
+    val orderMillis = getOrderDateMillis(order) ?: return true
+    val now = System.currentTimeMillis()
+    val diffMillis = now - orderMillis
+
+    if (diffMillis < 0) return true
+
+    val daysDiff = diffMillis / (1000L * 60 * 60 * 24)
+
+    return when (filter) {
+        HistoryTimeFilter.WEEK -> daysDiff <= 7
+        HistoryTimeFilter.MONTH -> daysDiff <= 30
+        HistoryTimeFilter.YEAR -> daysDiff <= 365
+        HistoryTimeFilter.ALL -> true
+    }
+}
+
+private fun parseDateToMillis(raw: String): Long? {
+    val clean = raw.trim()
+    val formats = listOf(
+        "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+        "yyyy-MM-dd'T'HH:mm:ssXXX",
+        "yyyy-MM-dd'T'HH:mm:ss",
+        "yyyy-MM-dd HH:mm:ss",
+        "yyyy-MM-dd",
+        "dd/MM/yyyy",
+        "dd-MM-yyyy"
+    )
+    for (fmt in formats) {
+        try {
+            val sdf = SimpleDateFormat(fmt, Locale.getDefault())
+            val date = sdf.parse(clean)
+            if (date != null) return date.time
+        } catch (_: Exception) {}
+    }
+    try {
+        if (clean.length >= 10 && clean[4] == '-' && clean[7] == '-') {
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val date = sdf.parse(clean.substring(0, 10))
+            if (date != null) return date.time
+        }
+    } catch (_: Exception) {}
+    return null
+}
+
+// ── Helper de extração JSON ──────────────────────────────────────────────────
 private fun extractJsonField(json: String?, key: String): String? {
     if (json.isNullOrBlank()) return null
     return Regex("\"$key\"\\s*:\\s*\"([^\"]*)\"").find(json)?.groupValues?.getOrNull(1)?.takeIf { it.isNotBlank() }
