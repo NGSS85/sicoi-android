@@ -447,8 +447,8 @@ class OSFormViewModel @Inject constructor(
                 printedOsAttachments = updatedPrintedOsAttachments,
                 photoAttachments = updatedPhotoAttachments,
                 materials = materialsList.toList(),
-                pauseState = pauseState,
-                pauseReason = pauseReason,
+                pauseState = if (isExternalService) "active" else pauseState,
+                pauseReason = if (isExternalService) externalJustification else pauseReason,
                 pauseObservations = pauseObservations.toList(),
                 descriptionExecuted = descriptionExecuted,
                 // Serviço externo: não finaliza a OS, deixa datas em branco
@@ -467,9 +467,9 @@ class OSFormViewModel @Inject constructor(
 
             val jsonString = "[RQ-11-DIGITAL]: " + Json.encodeToString(payload)
             
-            // Status: serviço externo não finaliza a OS (dashboard detecta pelo campo no JSON)
+            // Status: serviço externo agora salva como Pausada para aparecer no painel
             val status = when {
-                isExternalService -> "Em Execução"
+                isExternalService -> "Pausada"
                 pauseState == "active" -> "Pausada"
                 payload.finalDate.isNotBlank() -> "Finalizada"
                 else -> "Em Execução"
