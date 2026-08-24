@@ -191,7 +191,7 @@ fun TechnicianHistoryScreen(
                         it.status.equals("Finalizado", ignoreCase = true) ||
                         it.status.equals("Conclu\u00EDda", ignoreCase = true) ||
                         it.status.equals("Concluida", ignoreCase = true)
-                    }
+                    }.sortedByDescending { getOsNumberForSort(it) }
                 }
 
                 val external = remember(filteredOrders) {
@@ -199,7 +199,7 @@ fun TechnicianHistoryScreen(
                         it.tecnicoResponsavel?.lowercase()?.trim() == "externo" ||
                         it.solucaoAplicada?.contains("\"external_service\":\"Sim\"", ignoreCase = true) == true ||
                         it.solucaoAplicada?.contains("\"external_service\":\"sim\"", ignoreCase = true) == true
-                    }
+                    }.sortedByDescending { getOsNumberForSort(it) }
                 }
 
                 val chartData = remember(filteredOrders, selectedTimeFilter) {
@@ -767,6 +767,15 @@ private fun HistoryOrderItem(order: WorkOrder, category: HistoryCategory) {
         HistoryCategory.EXTERNAL -> Triple("Servi\u00E7o Externo", SicoiOrange, SicoiOrange)
     }
 
+    val dataFinalizada = remember(order) {
+        val millis = getOrderDateMillis(order)
+        if (millis != null) {
+            SimpleDateFormat("dd/MM/yyyy HH:mm", Locale("pt", "BR")).format(Date(millis))
+        } else {
+            "Data n\u00E3o informada"
+        }
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
@@ -818,6 +827,25 @@ private fun HistoryOrderItem(order: WorkOrder, category: HistoryCategory) {
                         color = badgeColor
                     )
                 }
+            }
+
+            // Nova Linha: Data de Finalização
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    Icons.Default.DateRange,
+                    contentDescription = null,
+                    tint = SicoiTextMuted,
+                    modifier = Modifier.size(14.dp)
+                )
+                Text(
+                    text = "Data: $dataFinalizada",
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, fontWeight = FontWeight.Medium),
+                    color = SicoiTextSecondary
+                )
             }
 
             // Linha 2: Nome do Equipamento e Patrimônio
@@ -1035,6 +1063,13 @@ private fun isOrderInTimeFilter(order: WorkOrder, filter: HistoryTimeFilter): Bo
         HistoryTimeFilter.YEAR -> daysDiff <= 365
         HistoryTimeFilter.ALL -> true
     }
+}
+
+private fun getOsNumberForSort(order: WorkOrder): Long {
+    val raw = order.numeroOs?.takeIf { it.isNotBlank() }
+        ?: extractJsonField(order.solucaoAplicada, "os_number")
+        ?: order.id
+    return raw.filter { it.isDigit() }.toLongOrNull() ?: 0L
 }
 
 private fun parseDateToMillis(raw: String): Long? {
