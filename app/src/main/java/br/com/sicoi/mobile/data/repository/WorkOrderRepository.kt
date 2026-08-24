@@ -354,6 +354,22 @@ class WorkOrderRepository @Inject constructor(
                     Log.w("WorkOrderRepo", "Aviso RPC finalize_os: ${rpcErr.message}")
                 }
 
+                // 3. Se o status for Pausada, insere observação compatível com o sistema web para detecção de pausa imediata
+                if (status == "Pausada") {
+                    try {
+                        postgrest["ind_maint_os_observations"].insert(
+                            buildJsonObject {
+                                put("os_id", JsonPrimitive(osId))
+                                put("observacao", JsonPrimitive("Status alterado para: Pausado"))
+                                put("autor", JsonPrimitive("App Mobile"))
+                            }
+                        )
+                        Log.i("WorkOrderRepo", "✅ Observação de Pausado inserida para OS $osId")
+                    } catch (obsErr: Exception) {
+                        Log.w("WorkOrderRepo", "Aviso: falha ao inserir observação de pausa: ${obsErr.message}")
+                    }
+                }
+
                 // Marca como sincronizado no Room local
                 database.workOrderDao().markSynced(osId)
                 Result.success(Unit)

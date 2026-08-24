@@ -1511,15 +1511,69 @@ private fun TechnicianExecutionSection(
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = SicoiTextSecondary)
                     )
                     viewModel.pauseObservations.forEach { obs ->
-                        Text(
-                            text = obs,
-                            style = MaterialTheme.typography.bodySmall.copy(color = SicoiTextMuted),
+                        val regex = Regex("^(.*?) \\[Anexo: (https?://.*?)\\]$")
+                        val matchResult = regex.matchEntire(obs)
+                        val text = matchResult?.groups?.get(1)?.value ?: obs
+                        val attachmentUrl = matchResult?.groups?.get(2)?.value
+
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(SicoiSurface, RoundedCornerShape(8.dp))
                                 .border(1.dp, SicoiDivider, RoundedCornerShape(8.dp))
-                                .padding(8.dp)
-                        )
+                                .padding(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = text,
+                                style = MaterialTheme.typography.bodySmall.copy(color = SicoiTextMuted)
+                            )
+                            if (attachmentUrl != null) {
+                                val context = androidx.compose.ui.platform.LocalContext.current
+                                val isImage = attachmentUrl.endsWith(".jpg", ignoreCase = true) || 
+                                              attachmentUrl.endsWith(".jpeg", ignoreCase = true) || 
+                                              attachmentUrl.endsWith(".png", ignoreCase = true) || 
+                                              attachmentUrl.endsWith(".webp", ignoreCase = true) || 
+                                              attachmentUrl.endsWith(".gif", ignoreCase = true)
+                                
+                                if (isImage) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(80.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .border(1.dp, SicoiDivider, RoundedCornerShape(4.dp))
+                                            .clickable {
+                                                try {
+                                                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(attachmentUrl))
+                                                    context.startActivity(intent)
+                                                } catch (e: Exception) {
+                                                    android.util.Log.e("OSFormScreen", "Erro ao abrir imagem: ${e.message}")
+                                                }
+                                            }
+                                    ) {
+                                        AsyncImage(
+                                            model = attachmentUrl,
+                                            contentDescription = "Anexo",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        text = "📎 Ver Arquivo Anexo",
+                                        style = MaterialTheme.typography.bodySmall.copy(color = SicoiOrange, fontWeight = FontWeight.Bold),
+                                        modifier = Modifier.clickable {
+                                            try {
+                                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(attachmentUrl))
+                                                context.startActivity(intent)
+                                            } catch (e: Exception) {
+                                                android.util.Log.e("OSFormScreen", "Erro ao abrir anexo: ${e.message}")
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
