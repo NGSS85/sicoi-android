@@ -566,16 +566,50 @@ fun WorkOrderCard(
     }
 
     var photoUrls by remember { mutableStateOf<List<String>>(emptyList()) }
+    var comentarioTecnico by remember { mutableStateOf<String?>(null) }
+    var anexoUrl by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(workOrder.solucaoAplicada) {
         val sol = workOrder.solucaoAplicada
-        if (sol != null && sol.startsWith("[RQ-11-DIGITAL]:")) {
-            try {
-                val jsonStr = sol.removePrefix("[RQ-11-DIGITAL]:").trim()
-                val payload = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString<br.com.sicoi.mobile.data.model.OSExecutionPayload>(jsonStr)
-                photoUrls = payload.photoAttachments.map { it.url }
-            } catch (e: Exception) {
-                // ignore
+        if (sol != null) {
+            if (sol.startsWith("[RQ-11-DIGITAL]:")) {
+                try {
+                    val jsonStr = sol.removePrefix("[RQ-11-DIGITAL]:").trim()
+                    val payload = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString<br.com.sicoi.mobile.data.model.OSExecutionPayload>(jsonStr)
+                    photoUrls = payload.photoAttachments.map { it.url }
+                    
+                    val lastObs = payload.pauseObservations.lastOrNull()
+                    if (!lastObs.isNullOrBlank()) {
+                        val pattern = Regex("""\s*\[Anexo:\s*(https?://[^\s\]]+)\]""")
+                        val match = pattern.find(lastObs)
+                        if (match != null) {
+                            anexoUrl = match.groupValues[1]
+                            comentarioTecnico = lastObs.replace(match.value, "").trim()
+                        } else {
+                            comentarioTecnico = lastObs
+                            anexoUrl = null
+                        }
+                    } else if (!payload.pauseReason.isNullOrBlank()) {
+                        comentarioTecnico = payload.pauseReason
+                        anexoUrl = null
+                    } else {
+                        comentarioTecnico = null
+                        anexoUrl = null
+                    }
+                } catch (e: Exception) {
+                    comentarioTecnico = null
+                    anexoUrl = null
+                }
+            } else if (sol.isNotBlank()) {
+                comentarioTecnico = sol
+                anexoUrl = null
+            } else {
+                comentarioTecnico = null
+                anexoUrl = null
             }
+        } else {
+            comentarioTecnico = null
+            anexoUrl = null
         }
     }
 
@@ -719,6 +753,77 @@ fun WorkOrderCard(
                         maxLines = 4,
                         overflow = TextOverflow.Ellipsis
                     )
+                }
+            }
+
+            if (isPaused && !comentarioTecnico.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(SicoiWarning.copy(alpha = 0.08f))
+                        .border(1.dp, SicoiWarning.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        "COMENTÁRIO TÉCNICO",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 11.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                            color = SicoiWarning,
+                            letterSpacing = 0.5.sp
+                        ),
+                        modifier = Modifier.padding(bottom = 6.dp)
+                    )
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (!anexoUrl.isNullOrBlank()) {
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            IconButton(
+                                onClick = {
+                                    try {
+                                        val intent = android.content.Intent(
+                                            android.content.Intent.ACTION_VIEW,
+                                            android.net.Uri.parse(anexoUrl)
+                                        )
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "Erro ao abrir anexo",
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                },
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(SicoiWarning.copy(alpha = 0.15f))
+                            ) {
+                                Icon(
+                                    Icons.Default.AttachFile,
+                                    contentDescription = "Ver Anexo",
+                                    tint = SicoiWarning,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        
+                        Text(
+                            comentarioTecnico ?: "",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = 14.sp,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                            ),
+                            color = SicoiTextPrimary,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
 
