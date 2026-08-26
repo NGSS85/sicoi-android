@@ -1,4 +1,4 @@
-﻿package br.com.sicoi.mobile.ui.osform
+package br.com.sicoi.mobile.ui.osform
 
 import android.content.pm.PackageManager
 import android.widget.Toast
@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -63,6 +64,7 @@ fun OSFormScreen(
     var editMode by remember { mutableStateOf(false) }
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     var beforeBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var showImagesDialog by remember { mutableStateOf(false) }
     var afterBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
     // Fotos dos solicitante (lista de bitmaps)
@@ -580,36 +582,39 @@ fun OSFormScreen(
                         .fillMaxSize()
                         .padding(paddingValues)
                 ) {
-                    if (isRequesterMode) {
-                        // ─── Abas ─────────────────────────────────────────────
-                        val tabs = listOf("Dados do Solicitante", "Dados do Equipamento")
-                        TabRow(
-                            selectedTabIndex = selectedTabIndex,
-                            containerColor = SicoiSurface,
-                            contentColor = SicoiOrange,
-                            indicator = { tabPositions ->
-                                TabRowDefaults.SecondaryIndicator(
-                                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                                    color = SicoiOrange
-                                )
-                            }
-                        ) {
-                            tabs.forEachIndexed { index, title ->
-                                Tab(
-                                    selected = selectedTabIndex == index,
-                                    onClick = { selectedTabIndex = index },
-                                    text = {
-                                        Text(
-                                            title,
-                                            style = MaterialTheme.typography.labelMedium.copy(
-                                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
-                                                fontSize = 12.sp
-                                            ),
-                                            color = if (selectedTabIndex == index) SicoiOrange else SicoiTextMuted
-                                        )
-                                    }
-                                )
-                            }
+                    // Exibir abas tanto no modo solicitante quanto no modo técnico
+                    val tabs = if (isRequesterMode) {
+                        listOf("Dados do Solicitante", "Dados do Equipamento")
+                    } else {
+                        listOf("Informações da O.S.", "Intervenções")
+                    }
+                    
+                    TabRow(
+                        selectedTabIndex = selectedTabIndex,
+                        containerColor = SicoiSurface,
+                        contentColor = SicoiOrange,
+                        indicator = { tabPositions ->
+                            TabRowDefaults.SecondaryIndicator(
+                                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
+                                color = SicoiOrange
+                            )
+                        }
+                    ) {
+                        tabs.forEachIndexed { index, title ->
+                            Tab(
+                                selected = selectedTabIndex == index,
+                                onClick = { selectedTabIndex = index },
+                                text = {
+                                    Text(
+                                        title,
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
+                                            fontSize = 12.sp
+                                        ),
+                                        color = if (selectedTabIndex == index) SicoiOrange else SicoiTextMuted
+                                    )
+                                }
+                            )
                         }
                     }
                     // ─── Conteúdo das Abas ────────────────────────────────
@@ -1032,62 +1037,177 @@ fun OSFormScreen(
                                 }
                             }
                         } else {
-                            // ── Subtítulo "Intervenções" ──────────────────────
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(4.dp)
-                                        .background(SicoiOrange, shape = RoundedCornerShape(2.dp))
-                                )
-                                Text(
-                                    "Intervenções",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.ExtraBold,
-                                        fontSize = 17.sp
-                                    ),
-                                    color = SicoiOrange
-                                )
-                                Spacer(modifier = Modifier.weight(1f))
-                                HorizontalDivider(
-                                    modifier = Modifier.weight(1f),
-                                    color = SicoiOrange.copy(alpha = 0.3f)
-                                )
-                            }
-                            TechnicianExecutionSection(
-                                viewModel = viewModel,
-                                serviceBitmaps = servicePhotoBitmaps,
-                                onServiceBitmapsChange = { servicePhotoBitmaps = it },
-                                materialBitmaps = materialPhotoBitmaps,
-                                onMaterialBitmapsChange = { materialPhotoBitmaps = it },
-                                onRequestAttach = { section ->
-                                    if (section == "service") {
-                                        servicePhotoPickerLauncher.launch("image/*")
-                                    } else {
-                                        materialPhotoPickerLauncher.launch("image/*")
-                                    }
-                                },
-                                onRequestCamera = { section ->
-                                    if (section == "service") {
-                                        val permissionCheck = ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA)
-                                        if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
-                                            serviceCameraPhotoLauncher.launch(null)
-                                        } else {
-                                            serviceCameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
-                                        }
-                                    } else {
-                                        val permissionCheck = ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA)
-                                        if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
-                                            materialCameraPhotoLauncher.launch(null)
-                                        } else {
-                                            materialCameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                            // Modo técnico com abas
+                            when (selectedTabIndex) {
+                                // ══════════════════════════════════════════════
+                                // ABA 0: Informações da O.S. (Somente Leitura)
+                                // ══════════════════════════════════════════════
+                                0 -> {
+                                    Card(
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = CardDefaults.cardColors(containerColor = SicoiCard),
+                                        border = BorderStroke(1.dp, SicoiOrangeBorder)
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(16.dp),
+                                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                                        ) {
+                                            // Cabeçalho da seção
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(38.dp)
+                                                        .background(SicoiOrange.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(Icons.Default.Info, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(20.dp))
+                                                }
+                                                Column {
+                                                    Text("Informações da O.S.", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
+                                                    Text("Dados registrados na abertura da ordem de serviço", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
+                                                }
+                                            }
+
+                                            HorizontalDivider(color = SicoiDivider)
+
+                                            // Solicitante
+                                            ReadOnlyOSField(
+                                                label = "Solicitante",
+                                                value = viewModel.solicitanteForm.ifBlank { "Não informado" },
+                                                icon = Icons.Default.Person
+                                            )
+
+                                            // Data de Abertura
+                                            ReadOnlyOSField(
+                                                label = "Data de Abertura",
+                                                value = viewModel.dateForm.ifBlank { "Não informado" },
+                                                icon = Icons.Default.DateRange
+                                            )
+
+                                            // Equipamento
+                                            ReadOnlyOSField(
+                                                label = "Equipamento",
+                                                value = viewModel.equipamentoForm.ifBlank { "Não informado" },
+                                                icon = Icons.Default.Settings
+                                            )
+
+                                            // Patrimônio
+                                            ReadOnlyOSField(
+                                                label = "Número do Patrimônio",
+                                                value = viewModel.patrimonioForm.ifBlank { "Não informado" },
+                                                icon = Icons.Default.Tag
+                                            )
+
+                                            // Prioridade
+                                            ReadOnlyOSField(
+                                                label = "Prioridade",
+                                                value = viewModel.prioridadeForm,
+                                                icon = Icons.Default.Warning
+                                            )
+
+                                            // Descrição do Problema
+                                            ReadOnlyOSField(
+                                                label = "Descrição do Problema",
+                                                value = viewModel.descricaoForm.ifBlank { "Não informado" },
+                                                icon = Icons.Default.Description
+                                            )
+
+                                            Spacer(modifier = Modifier.height(6.dp))
+
+                                            // Botão Imagens
+                                            val hasImages = viewModel.loadedPhotoAttachments.isNotEmpty()
+                                            Button(
+                                                onClick = {
+                                                    if (hasImages) {
+                                                        showImagesDialog = true
+                                                    } else {
+                                                        Toast.makeText(context, "Nenhuma imagem anexada pelo solicitante", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                },
+                                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                                shape = RoundedCornerShape(10.dp),
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = if (hasImages) SicoiOrange else SicoiSurface,
+                                                    contentColor = if (hasImages) Color.White else SicoiTextMuted
+                                                ),
+                                                border = if (!hasImages) BorderStroke(1.dp, SicoiDivider) else null
+                                            ) {
+                                                Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    text = if (hasImages) "Imagens (${viewModel.loadedPhotoAttachments.size})" else "Sem Imagens Anexadas",
+                                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                                )
+                                            }
                                         }
                                     }
                                 }
-                            )
+
+                                // ══════════════════════════════════════════════
+                                // ABA 1: Intervenções
+                                // ══════════════════════════════════════════════
+                                1 -> {
+                                    // ── Subtítulo "Intervenções" ──────────────────────
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(4.dp)
+                                                .background(SicoiOrange, shape = RoundedCornerShape(2.dp))
+                                        )
+                                        Text(
+                                            "Intervenções",
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontWeight = FontWeight.ExtraBold,
+                                                fontSize = 17.sp
+                                            ),
+                                            color = SicoiOrange
+                                        )
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        HorizontalDivider(
+                                            modifier = Modifier.weight(1f),
+                                            color = SicoiOrange.copy(alpha = 0.3f)
+                                        )
+                                    }
+                                    TechnicianExecutionSection(
+                                        viewModel = viewModel,
+                                        serviceBitmaps = servicePhotoBitmaps,
+                                        onServiceBitmapsChange = { servicePhotoBitmaps = it },
+                                        materialBitmaps = materialPhotoBitmaps,
+                                        onMaterialBitmapsChange = { materialPhotoBitmaps = it },
+                                        onRequestAttach = { section ->
+                                            if (section == "service") {
+                                                servicePhotoPickerLauncher.launch("image/*")
+                                            } else {
+                                                materialPhotoPickerLauncher.launch("image/*")
+                                            }
+                                        },
+                                        onRequestCamera = { section ->
+                                            if (section == "service") {
+                                                val permissionCheck = ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA)
+                                                if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
+                                                    serviceCameraPhotoLauncher.launch(null)
+                                                } else {
+                                                    serviceCameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                                                }
+                                            } else {
+                                                val permissionCheck = ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA)
+                                                if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
+                                                    materialCameraPhotoLauncher.launch(null)
+                                                } else {
+                                                    materialCameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                                                }
+                                            }
+                                        }
+                                    )
+                                }
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(4.dp))
@@ -1171,6 +1291,80 @@ fun OSFormScreen(
 
             else -> {}
         }
+    }
+    
+    // Diálogo para visualização de Imagens do Solicitante (Grade/LazyColumn)
+    if (showImagesDialog && viewModel.loadedPhotoAttachments.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { showImagesDialog = false },
+            title = {
+                Text(
+                    "Imagens do Solicitante",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = SicoiTextPrimary
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "Fotos anexadas na abertura da O.S.:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SicoiTextMuted
+                    )
+                    
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 400.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(viewModel.loadedPhotoAttachments) { file ->
+                            Card(
+                                shape = RoundedCornerShape(10.dp),
+                                colors = CardDefaults.cardColors(containerColor = SicoiSurface),
+                                border = BorderStroke(1.dp, SicoiDivider),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(220.dp)
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize()) {
+                                    AsyncImage(
+                                        model = file.url,
+                                        contentDescription = file.name,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clickable {
+                                                try {
+                                                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(file.url))
+                                                    context.startActivity(intent)
+                                                } catch (e: Exception) {
+                                                    android.util.Log.e("OSFormScreen", "Erro ao abrir imagem: ${e.message}")
+                                                }
+                                            }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { showImagesDialog = false }
+                ) {
+                    Text("Fechar", color = SicoiOrange, fontWeight = FontWeight.Bold)
+                }
+            },
+            containerColor = SicoiCard,
+            shape = RoundedCornerShape(16.dp)
+        )
     }
     } // End of ModalNavigationDrawer
 }
