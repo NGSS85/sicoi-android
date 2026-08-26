@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -97,6 +98,9 @@ fun WorkOrdersScreen(
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
+    
+    var showImageViewer by remember { mutableStateOf(false) }
+    var viewerImages by remember { mutableStateOf<List<String>>(emptyList()) }
 
     // Calcular métricas para passar para o header
     val activeOrders = if (state is WorkOrdersUiState.Success) {
@@ -469,11 +473,63 @@ fun WorkOrdersScreen(
                                 items(active, key = { it.id }) { order ->
                                     WorkOrderCard(
                                         workOrder = order,
-                                        onClick = { onSelectWorkOrder(order.id) }
+                                        onClick = { onSelectWorkOrder(order.id) },
+                                        onShowImages = { urls ->
+                                            viewerImages = urls
+                                            showImageViewer = true
+                                        }
                                     )
                                 }
                                 item { Spacer(modifier = Modifier.height(16.dp)) }
                             }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showImageViewer) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { showImageViewer = false },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = Color.Black.copy(alpha = 0.95f)
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.Start
+                    ) {
+                        IconButton(
+                            onClick = { showImageViewer = false },
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.White.copy(alpha = 0.15f))
+                        ) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = Color.White)
+                        }
+                    }
+                    if (viewerImages.isNotEmpty()) {
+                        androidx.compose.foundation.lazy.LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            items(viewerImages) { url ->
+                                coil.compose.AsyncImage(
+                                    model = url,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.FillWidth,
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                                )
+                            }
+                        }
+                    } else {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Nenhuma imagem anexada", color = Color.White)
                         }
                     }
                 }
@@ -489,7 +545,8 @@ fun WorkOrderCard(
     workOrder: WorkOrder, 
     isPaused: Boolean = false, 
     onClick: () -> Unit,
-    onReactivate: (() -> Unit)? = null
+    onReactivate: (() -> Unit)? = null,
+    onShowImages: ((List<String>) -> Unit)? = null
 ) {
     val displayPriority = when (workOrder.prioridade?.lowercase()?.trim()) {
         "emergency", "emergência", "emergencia", "crítica", "critica" -> "Emergência"
@@ -506,6 +563,20 @@ fun WorkOrderCard(
         "Emergência" -> Icons.Default.Warning
         "Urgente"    -> Icons.Default.PriorityHigh
         else         -> Icons.Default.CheckCircleOutline
+    }
+
+    var photoUrls by remember { mutableStateOf<List<String>>(emptyList()) }
+    LaunchedEffect(workOrder.solucaoAplicada) {
+        val sol = workOrder.solucaoAplicada
+        if (sol != null && sol.startsWith("[RQ-11-DIGITAL]:")) {
+            try {
+                val jsonStr = sol.removePrefix("[RQ-11-DIGITAL]:").trim()
+                val payload = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString<br.com.sicoi.mobile.data.model.OSExecutionPayload>(jsonStr)
+                photoUrls = payload.photoAttachments.map { it.url }
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
     }
 
     val infiniteTransition = rememberInfiniteTransition(label = "BlinkTransition")
@@ -599,26 +670,38 @@ fun WorkOrderCard(
                 color = SicoiDivider
             )
 
-            // Informações da OS
-            WorkOrderInfoRow(
-                icon = Icons.Default.PrecisionManufacturing,
-                label = "Equipamento",
-                value = workOrder.equipamento ?: "—"
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-            WorkOrderInfoRow(
-                icon = Icons.Default.Business,
-                label = "Setor",
-                value = workOrder.setor ?: "—"
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Spacer(modifier = Modifier.height(6.dp))
-            WorkOrderInfoRow(
-                icon = Icons.Default.Schedule,
-                label = "Aberto há",
-                value = formatTimeElapsed(workOrder.dataAbertura)
-            )
+            // Informações da OS (Modern Layout)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                WorkOrderInfoChip(
+                    icon = Icons.Default.PrecisionManufacturing,
+                    label = "Equipamento",
+                    value = workOrder.equipamento ?: "—",
+                    modifier = Modifier.weight(1f)
+                )
+                WorkOrderInfoChip(
+                    icon = Icons.Default.Business,
+                    label = "Setor",
+                    value = workOrder.setor ?: "—",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                WorkOrderInfoChip(
+                    icon = Icons.Default.Schedule,
+                    label = "Aberto há",
+                    value = formatTimeElapsed(workOrder.dataAbertura),
+                    modifier = Modifier.weight(1f)
+                )
+                // Se houver mais infos, pode colocar aqui no outro peso
+                Spacer(modifier = Modifier.weight(1f))
+            }
 
             if (!workOrder.descricaoProblema.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(10.dp))
@@ -644,8 +727,23 @@ fun WorkOrderCard(
             // Botão Abrir ou Reativar
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                if (photoUrls.isNotEmpty() && onShowImages != null) {
+                    IconButton(
+                        onClick = { onShowImages(photoUrls) },
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(SicoiBlue.copy(alpha = 0.15f))
+                            .border(1.dp, SicoiBlue.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                    ) {
+                        Icon(Icons.Default.Image, contentDescription = "Ver Imagens", tint = SicoiBlue)
+                    }
+                } else {
+                    Spacer(modifier = Modifier.width(48.dp))
+                }
+
                 val buttonColor = if (isPaused && onReactivate != null) SicoiSuccess else SicoiOrange
                 Row(
                     modifier = Modifier
@@ -704,6 +802,45 @@ private fun WorkOrderInfoRow(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+@Composable
+private fun WorkOrderInfoChip(
+    icon: androidx.compose.ui.graphics.vector.ImageVector, 
+    label: String, 
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(SicoiSurface)
+            .border(1.dp, SicoiDivider.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(SicoiOrange.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(16.dp))
+        }
+        Column {
+            Text(
+                label.uppercase(),
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = SicoiTextMuted, letterSpacing = 0.5.sp)
+            )
+            Text(
+                value,
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = SicoiTextPrimary),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 

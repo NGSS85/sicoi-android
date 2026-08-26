@@ -419,64 +419,6 @@ fun OSFormScreen(
                         }
                     }
 
-                    if (!isRequesterMode && viewModel.loadedPhotoAttachments.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "FOTOS DO SOLICITANTE",
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                fontWeight = FontWeight.ExtraBold, 
-                                color = SicoiOrange,
-                                fontSize = 13.sp
-                            ),
-                            modifier = Modifier.padding(bottom = 2.dp)
-                        )
-                        Text(
-                            text = "Anexos originais da abertura da OS:",
-                            style = MaterialTheme.typography.bodySmall.copy(color = SicoiTextMuted, fontSize = 10.5.sp),
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-
-                        viewModel.loadedPhotoAttachments.forEachIndexed { index, file ->
-                            Card(
-                                shape = RoundedCornerShape(10.dp),
-                                colors = CardDefaults.cardColors(containerColor = SicoiSurface),
-                                border = BorderStroke(1.dp, SicoiDivider),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(150.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                ) {
-                                    AsyncImage(
-                                        model = file.url,
-                                        contentDescription = file.name,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.BottomStart)
-                                            .background(Color.Black.copy(alpha = 0.65f))
-                                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                                    ) {
-                                        Text(
-                                            text = "Anexo ${index + 1}",
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                color = Color.White,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 9.sp
-                                            )
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
 
                     CentralDoSolicitanteContent(
                         isRequesterMode = isRequesterMode,
@@ -1571,62 +1513,6 @@ private fun TechnicianExecutionSection(
 ) {
     val context = LocalContext.current
 
-    // Fotos anexadas pelo solicitante na abertura da OS (Exibidas para o Técnico)
-    if (viewModel.loadedPhotoAttachments.isNotEmpty()) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = SicoiCard),
-            border = BorderStroke(1.dp, SicoiOrangeBorder)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .background(SicoiOrange.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.Image, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(20.dp))
-                    }
-                    Column {
-                        Text("Fotos do Solicitante", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
-                        Text("Fotos anexadas durante a abertura desta OS", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
-                    }
-                }
-
-                HorizontalDivider(color = SicoiDivider)
-
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(viewModel.loadedPhotoAttachments) { file ->
-                        Box(
-                            modifier = Modifier
-                                .size(90.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .border(1.dp, SicoiCardBorder, RoundedCornerShape(8.dp))
-                                .clickable {
-                                    Toast.makeText(context, "Visualizando foto do solicitante", Toast.LENGTH_SHORT).show()
-                                }
-                        ) {
-                            AsyncImage(
-                                model = file.url,
-                                contentDescription = file.name,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        Spacer(modifier = Modifier.height(14.dp))
-    }
-    
     // Card 1: Controle de Pausa da O.S. + Serviço Externo
     Card(
         shape = RoundedCornerShape(16.dp),
