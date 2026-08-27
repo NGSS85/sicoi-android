@@ -568,6 +568,7 @@ fun WorkOrderCard(
     var photoUrls by remember { mutableStateOf<List<String>>(emptyList()) }
     var comentarioTecnico by remember { mutableStateOf<String?>(null) }
     var anexoUrl by remember { mutableStateOf<String?>(null) }
+    var extractedSolicitante by remember { mutableStateOf<String?>(workOrder.solicitante) }
 
     LaunchedEffect(workOrder.solucaoAplicada) {
         val sol = workOrder.solucaoAplicada
@@ -577,6 +578,7 @@ fun WorkOrderCard(
                     val jsonStr = sol.removePrefix("[RQ-11-DIGITAL]:").trim()
                     val payload = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString<br.com.sicoi.mobile.data.model.OSExecutionPayload>(jsonStr)
                     photoUrls = payload.photoAttachments.map { it.url }
+                    extractedSolicitante = payload.responsible.ifBlank { workOrder.solicitante }
                     
                     val lastObs = payload.pauseObservations.lastOrNull()
                     if (!lastObs.isNullOrBlank()) {
@@ -722,146 +724,44 @@ fun WorkOrderCard(
                     modifier = Modifier.weight(1f)
                 )
             }
+
             Spacer(modifier = Modifier.height(8.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 WorkOrderInfoChip(
-                    icon = Icons.Default.Schedule,
-                    label = "Aberto há",
-                    value = formatTimeElapsed(workOrder.dataAbertura),
+                    icon = Icons.Default.Person,
+                    label = "Solicitante",
+                    value = extractedSolicitante?.ifBlank { "—" } ?: "—",
                     modifier = Modifier.weight(1f)
                 )
-                // Se houver mais infos, pode colocar aqui no outro peso
-                Spacer(modifier = Modifier.weight(1f))
             }
 
-            if (!workOrder.descricaoProblema.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(10.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(SicoiSurface)
-                        .padding(10.dp)
-                ) {
-                    Text(
-                        workOrder.descricaoProblema,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium),
-                        color = SicoiTextSecondary,
-                        maxLines = 4,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            if (isPaused && !comentarioTecnico.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(10.dp))
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(SicoiWarning.copy(alpha = 0.08f))
-                        .border(1.dp, SicoiWarning.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
-                        .padding(12.dp)
-                ) {
-                    Text(
-                        "COMENTÁRIO TÉCNICO",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontSize = 11.sp,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
-                            color = SicoiWarning,
-                            letterSpacing = 0.5.sp
-                        ),
-                        modifier = Modifier.padding(bottom = 6.dp)
-                    )
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        if (!anexoUrl.isNullOrBlank()) {
-                            val context = androidx.compose.ui.platform.LocalContext.current
-                            IconButton(
-                                onClick = {
-                                    try {
-                                        val intent = android.content.Intent(
-                                            android.content.Intent.ACTION_VIEW,
-                                            android.net.Uri.parse(anexoUrl)
-                                        )
-                                        context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        android.widget.Toast.makeText(
-                                            context,
-                                            "Erro ao abrir anexo",
-                                            android.widget.Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                },
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(SicoiWarning.copy(alpha = 0.15f))
-                            ) {
-                                Icon(
-                                    Icons.Default.AttachFile,
-                                    contentDescription = "Ver Anexo",
-                                    tint = SicoiWarning,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                        
-                        Text(
-                            comentarioTecnico ?: "",
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontSize = 14.sp,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
-                            ),
-                            color = SicoiTextPrimary,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Botão Abrir ou Reativar
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (photoUrls.isNotEmpty() && onShowImages != null) {
-                    IconButton(
-                        onClick = { onShowImages(photoUrls) },
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(SicoiBlue.copy(alpha = 0.15f))
-                            .border(1.dp, SicoiBlue.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                    ) {
-                        Icon(Icons.Default.Image, contentDescription = "Ver Imagens", tint = SicoiBlue)
-                    }
-                } else {
-                    Spacer(modifier = Modifier.width(48.dp))
-                }
 
-                val buttonColor = if (isPaused && onReactivate != null) SicoiSuccess else SicoiOrange
+                val buttonColor = if (isPaused && onReactivate != null) SicoiSuccess else SicoiBlue
                 Row(
                     modifier = Modifier
+                        .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
                         .background(buttonColor)
                         .border(1.dp, buttonColor, RoundedCornerShape(12.dp))
                         .clickable { if (isPaused && onReactivate != null) onReactivate() else onClick() }
-                        .padding(horizontal = 28.dp, vertical = 10.dp),
+                        .padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        if (isPaused && onReactivate != null) "Reativar O.S." else "Abrir O.S.", 
+                        if (isPaused && onReactivate != null) "Reativar O.S." else "Abrir Ordem de serviço", 
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = Color.White, 
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Black,

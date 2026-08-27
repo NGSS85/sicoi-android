@@ -196,7 +196,7 @@ fun OSFormScreen(
                                 viewModel.createRequesterWorkOrder(
                                     solicitante = viewModel.solicitanteForm,
                                     equipamento = viewModel.equipamentoForm,
-                                    setor = "",
+                                    setor = viewModel.setorForm,
                                     prioridade = viewModel.prioridadeForm,
                                     descricaoProblema = viewModel.descricaoForm,
                                     technicianName = technicianName,
@@ -614,6 +614,16 @@ fun OSFormScreen(
                                                 isTab0 = true
                                             )
 
+                                            // Setor
+                                            EditableOSField(
+                                                label = "Setor *",
+                                                value = viewModel.setorForm,
+                                                onValueChange = { viewModel.setorForm = it },
+                                                placeholder = "Ex: Produção, Manutenção",
+                                                icon = Icons.Default.Business,
+                                                isTab0 = true
+                                            )
+
                                             // Data de Abertura
                                             ReadOnlyOSField(
                                                 label = "Data de Abertura (automático)",
@@ -1019,69 +1029,90 @@ fun OSFormScreen(
                                             ReadOnlyOSField(
                                                 label = "Solicitante",
                                                 value = viewModel.solicitanteForm.ifBlank { "Não informado" },
-                                                icon = Icons.Default.Person
+                                                icon = Icons.Default.Person,
+                                                isTab0 = true
+                                            )
+
+                                            // Setor
+                                            ReadOnlyOSField(
+                                                label = "Setor",
+                                                value = viewModel.setorForm.ifBlank { "Não informado" },
+                                                icon = Icons.Default.Business,
+                                                isTab0 = true
                                             )
 
                                             // Data de Abertura
                                             ReadOnlyOSField(
                                                 label = "Data de Abertura",
                                                 value = viewModel.dateForm.ifBlank { "Não informado" },
-                                                icon = Icons.Default.DateRange
+                                                icon = Icons.Default.DateRange,
+                                                isTab0 = true
                                             )
 
                                             // Equipamento
                                             ReadOnlyOSField(
                                                 label = "Equipamento",
                                                 value = viewModel.equipamentoForm.ifBlank { "Não informado" },
-                                                icon = Icons.Default.Settings
+                                                icon = Icons.Default.Settings,
+                                                isTab0 = true
                                             )
 
                                             // Patrimônio
                                             ReadOnlyOSField(
                                                 label = "Número do Patrimônio",
                                                 value = viewModel.patrimonioForm.ifBlank { "Não informado" },
-                                                icon = Icons.Default.Tag
+                                                icon = Icons.Default.Tag,
+                                                isTab0 = true
                                             )
 
                                             // Prioridade
                                             ReadOnlyOSField(
                                                 label = "Prioridade",
                                                 value = viewModel.prioridadeForm,
-                                                icon = Icons.Default.Warning
+                                                icon = Icons.Default.Warning,
+                                                isTab0 = true
                                             )
 
                                             // Descrição do Problema
                                             ReadOnlyOSField(
                                                 label = "Descrição do Problema",
                                                 value = viewModel.descricaoForm.ifBlank { "Não informado" },
-                                                icon = Icons.Default.Description
+                                                icon = Icons.Default.Description,
+                                                isTab0 = true
                                             )
 
                                             Spacer(modifier = Modifier.height(6.dp))
 
-                                            // Botão Imagens
-                                            val hasImages = viewModel.loadedPhotoAttachments.isNotEmpty()
-                                            Button(
-                                                onClick = {
-                                                    if (hasImages) {
-                                                        showImagesDialog = true
-                                                    } else {
-                                                        Toast.makeText(context, "Nenhuma imagem anexada pelo solicitante", Toast.LENGTH_SHORT).show()
-                                                    }
-                                                },
-                                                modifier = Modifier.fillMaxWidth().height(48.dp),
-                                                shape = RoundedCornerShape(10.dp),
-                                                colors = ButtonDefaults.buttonColors(
-                                                    containerColor = if (hasImages) SicoiOrange else SicoiSurface,
-                                                    contentColor = if (hasImages) Color.White else SicoiTextMuted
-                                                ),
-                                                border = if (!hasImages) BorderStroke(1.dp, SicoiDivider) else null
-                                            ) {
-                                                Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(18.dp))
-                                                Spacer(modifier = Modifier.width(8.dp))
+                                            // Imagens anexadas pelo solicitante
+                                            val attachments = viewModel.loadedPhotoAttachments
+                                            if (attachments.isNotEmpty()) {
                                                 Text(
-                                                    text = if (hasImages) "Imagens (${viewModel.loadedPhotoAttachments.size})" else "Sem Imagens Anexadas",
-                                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                                    "Imagens Enviadas",
+                                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
+                                                    color = SicoiTextPrimary
+                                                )
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                    items(attachments) { attachment ->
+                                                        AsyncImage(
+                                                            model = attachment.url,
+                                                            contentDescription = "Imagem do solicitante",
+                                                            contentScale = ContentScale.Crop,
+                                                            modifier = Modifier
+                                                                .size(140.dp)
+                                                                .clip(RoundedCornerShape(8.dp))
+                                                                .border(1.dp, SicoiDivider, RoundedCornerShape(8.dp))
+                                                                .clickable {
+                                                                    showImagesDialog = true
+                                                                }
+                                                        )
+                                                    }
+                                                }
+                                            } else {
+                                                Text(
+                                                    "Nenhuma imagem anexada pelo solicitante",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = SicoiTextMuted
                                                 )
                                             }
                                         }

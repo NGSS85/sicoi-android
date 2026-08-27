@@ -56,6 +56,7 @@ class OSFormViewModel @Inject constructor(
     // Campos do formulário do solicitante
     var solicitanteForm      by androidx.compose.runtime.mutableStateOf("")
     var equipamentoForm      by androidx.compose.runtime.mutableStateOf("")
+    var setorForm            by androidx.compose.runtime.mutableStateOf("")
     var patrimonioForm       by androidx.compose.runtime.mutableStateOf("")
     var prioridadeForm       by androidx.compose.runtime.mutableStateOf("Normal")
     var descricaoForm        by androidx.compose.runtime.mutableStateOf("")
@@ -106,6 +107,7 @@ class OSFormViewModel @Inject constructor(
         // Campos comuns (solicitante)
         solicitanteForm = order.solicitante ?: ""
         equipamentoForm = order.equipamento ?: ""
+        setorForm = order.setor ?: ""
         patrimonioForm = ""
         prioridadeForm = order.prioridade ?: "Normal"
         descricaoForm = order.descricaoProblema ?: ""
