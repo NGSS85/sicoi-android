@@ -720,84 +720,153 @@ fun WorkOrderCard(
                     }
                 }
 
-                // 2. Badges (Pausada + Prioridade: Normal, Urgente, Emergência) + Botão Expandir
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (isPaused) {
+                // 2. Badges + Botão Expandir (Em modo Pausado: Detalhes na vertical centralizado abaixo)
+                if (isPaused) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        // Linha com Badges (PAUSADA + Prioridade)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = SicoiError.copy(alpha = 0.15f),
+                                border = BorderStroke(1.dp, SicoiError.copy(alpha = 0.4f))
+                            ) {
+                                Text(
+                                    "PAUSADA",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = SicoiError, 
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold, 
+                                        fontSize = 11.sp
+                                    ),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                )
+                            }
+
+                            // Badge de Prioridade
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = priorityColor.copy(alpha = if (displayPriority == "Emergência") 0.85f * blinkAlpha else 0.15f),
+                                border = BorderStroke(1.dp, priorityColor.copy(alpha = 0.45f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        priorityIcon, 
+                                        contentDescription = null, 
+                                        tint = if (displayPriority == "Emergência") Color.White else priorityColor, 
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = displayPriority.uppercase(),
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                                            fontSize = 11.sp,
+                                            letterSpacing = 0.3.sp,
+                                            color = if (displayPriority == "Emergência") Color.White else priorityColor
+                                        )
+                                    )
+                                }
+                            }
+                        }
+
+                        // Botão Detalhes centralizado na vertical logo abaixo
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = SicoiError.copy(alpha = 0.15f),
-                            border = BorderStroke(1.dp, SicoiError.copy(alpha = 0.4f))
+                            color = if (isExpanded) SicoiOrange.copy(alpha = 0.2f) else Color(0xFF282D3C),
+                            border = BorderStroke(1.dp, if (isExpanded) SicoiOrangeBorder else Color(0xFF3B4358)),
+                            modifier = Modifier.clickable { isExpanded = !isExpanded }
                         ) {
-                            Text(
-                                "PAUSADA",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = SicoiError, 
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold, 
-                                    fontSize = 11.sp
-                                ),
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = if (isExpanded) "Menos" else "Detalhes",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        color = if (isExpanded) SicoiOrange else Color.White
+                                    )
+                                )
+                                Icon(
+                                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = if (isExpanded) "Recolher" else "Expandir",
+                                    tint = if (isExpanded) SicoiOrange else Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
                     }
-
-                    // Badge de Prioridade
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = priorityColor.copy(alpha = if (displayPriority == "Emergência") 0.85f * blinkAlpha else 0.15f),
-                        border = BorderStroke(1.dp, priorityColor.copy(alpha = 0.45f))
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        // Badge de Prioridade
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = priorityColor.copy(alpha = if (displayPriority == "Emergência") 0.85f * blinkAlpha else 0.15f),
+                            border = BorderStroke(1.dp, priorityColor.copy(alpha = 0.45f))
                         ) {
-                            Icon(
-                                priorityIcon, 
-                                contentDescription = null, 
-                                tint = if (displayPriority == "Emergência") Color.White else priorityColor, 
-                                modifier = Modifier.size(15.dp)
-                            )
-                            Text(
-                                text = displayPriority.uppercase(),
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
-                                    fontSize = 11.sp,
-                                    letterSpacing = 0.3.sp,
-                                    color = if (displayPriority == "Emergência") Color.White else priorityColor
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    priorityIcon, 
+                                    contentDescription = null, 
+                                    tint = if (displayPriority == "Emergência") Color.White else priorityColor, 
+                                    modifier = Modifier.size(15.dp)
                                 )
-                            )
+                                Text(
+                                    text = displayPriority.uppercase(),
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                                        fontSize = 11.sp,
+                                        letterSpacing = 0.3.sp,
+                                        color = if (displayPriority == "Emergência") Color.White else priorityColor
+                                    )
+                                )
+                            }
                         }
-                    }
 
-                    // 3. Botão Expandir / Recolher
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (isExpanded) SicoiOrange.copy(alpha = 0.2f) else Color(0xFF282D3C),
-                        border = BorderStroke(1.dp, if (isExpanded) SicoiOrangeBorder else Color(0xFF3B4358)),
-                        modifier = Modifier.clickable { isExpanded = !isExpanded }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        // Botão Expandir / Recolher
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isExpanded) SicoiOrange.copy(alpha = 0.2f) else Color(0xFF282D3C),
+                            border = BorderStroke(1.dp, if (isExpanded) SicoiOrangeBorder else Color(0xFF3B4358)),
+                            modifier = Modifier.clickable { isExpanded = !isExpanded }
                         ) {
-                            Text(
-                                text = if (isExpanded) "Menos" else "Detalhes",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                    fontSize = 11.sp,
-                                    color = if (isExpanded) SicoiOrange else Color.White
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Text(
+                                    text = if (isExpanded) "Menos" else "Detalhes",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        color = if (isExpanded) SicoiOrange else Color.White
+                                    )
                                 )
-                            )
-                            Icon(
-                                imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                                contentDescription = if (isExpanded) "Recolher" else "Expandir",
-                                tint = if (isExpanded) SicoiOrange else Color.White,
-                                modifier = Modifier.size(16.dp)
-                            )
+                                Icon(
+                                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = if (isExpanded) "Recolher" else "Expandir",
+                                    tint = if (isExpanded) SicoiOrange else Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
                     }
                 }
