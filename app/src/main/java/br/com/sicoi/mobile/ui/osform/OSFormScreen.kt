@@ -2547,6 +2547,15 @@ private fun OSHistoryCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            val rawOsNumber = finalOsNumber
+                .replace("OS", "", ignoreCase = true)
+                .replace("O.S.", "", ignoreCase = true)
+                .replace("#", "")
+                .replace("º", "")
+                .replace("nº", "", ignoreCase = true)
+                .trim()
+            val displayOsTitle = if (rawOsNumber.isNotBlank()) "OS nº$rawOsNumber" else "OS Sem Número"
+
             // Linha Superior: Badge O.S. + Status
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2561,17 +2570,10 @@ private fun OSHistoryCard(
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            Icons.Default.Tag, 
-                            contentDescription = null, 
-                            tint = SicoiOrange, 
-                            modifier = Modifier.size(16.dp)
-                        )
                         Text(
-                            text = "O.S. #$finalOsNumber",
+                            text = displayOsTitle,
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 15.sp,

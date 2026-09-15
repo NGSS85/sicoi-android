@@ -297,27 +297,27 @@ fun WorkOrdersScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // ── NOVO CARD DO TÉCNICO MODERNO ───────────────────────────
+                // ── NOVO CARD DO TÉCNICO MODERNO (Aumentado em 20%) ─────────
                 Surface(
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(18.dp),
                     color = Color(0xFF181B22),
                     border = BorderStroke(1.dp, Color(0xFF2E3545)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier.padding(14.dp),
+                        modifier = Modifier.padding(18.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // Avatar com gradiente e ícone
+                        // Avatar com gradiente e ícone (20% maior)
                         Box(
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(58.dp)
                                 .background(
                                     brush = Brush.linearGradient(
                                         colors = listOf(SicoiOrange, Color(0xFFD84315))
                                     ),
-                                    shape = RoundedCornerShape(14.dp)
+                                    shape = RoundedCornerShape(16.dp)
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
@@ -325,7 +325,7 @@ fun WorkOrdersScreen(
                                 Icons.Default.Engineering,
                                 contentDescription = null,
                                 tint = Color.White,
-                                modifier = Modifier.size(28.dp)
+                                modifier = Modifier.size(34.dp)
                             )
                         }
 
@@ -339,18 +339,18 @@ fun WorkOrdersScreen(
                                     "PAINEL DO TÉCNICO",
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
-                                        fontSize = 10.sp,
+                                        fontSize = 12.sp,
                                         letterSpacing = 0.5.sp
                                     ),
                                     color = SicoiOrange,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 technicianName.uppercase(),
                                 style = MaterialTheme.typography.titleLarge.copy(
-                                    fontSize = 20.sp,
+                                    fontSize = 24.sp,
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
                                     letterSpacing = 0.5.sp
                                 ),
@@ -358,16 +358,17 @@ fun WorkOrdersScreen(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 "Atividades e ordens em andamento",
-                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp),
                                 color = SicoiTextMuted
                             )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 // Cards de métricas interativos (Ordens ativas | O.S Pausadas com Acesso Direto)
                 Row(
@@ -377,12 +378,12 @@ fun WorkOrdersScreen(
                     // Card: Ordens ativas
                     Surface(
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(16.dp),
                         color = Color(0xFF1E222D),
                         border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.35f))
                     ) {
                         Column(
-                            modifier = Modifier.padding(vertical = 12.dp, horizontal = 12.dp),
+                            modifier = Modifier.padding(vertical = 14.dp, horizontal = 12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Row(
@@ -391,7 +392,7 @@ fun WorkOrdersScreen(
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(6.dp)
+                                        .size(7.dp)
                                         .clip(CircleShape)
                                         .background(SicoiOrange)
                                 )
@@ -399,17 +400,17 @@ fun WorkOrdersScreen(
                                     "Ordens Ativas",
                                     style = MaterialTheme.typography.labelMedium.copy(
                                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                        fontSize = 12.sp
+                                        fontSize = 13.sp
                                     ),
                                     color = SicoiOrange
                                 )
                             }
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 "${activeOrders.size}",
                                 style = MaterialTheme.typography.headlineMedium.copy(
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
-                                    fontSize = 24.sp
+                                    fontSize = 28.sp
                                 ),
                                 color = Color.White
                             )
@@ -421,7 +422,7 @@ fun WorkOrdersScreen(
                         modifier = Modifier
                             .weight(1f)
                             .clickable { onNavigateToPausedOrders(technicianName) },
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(16.dp),
                         color = if (pausedOrders.isNotEmpty()) SicoiWarning.copy(alpha = 0.12f) else Color(0xFF1E222D),
                         border = BorderStroke(
                             1.dp, 
@@ -429,7 +430,7 @@ fun WorkOrdersScreen(
                         )
                     ) {
                         Column(
-                            modifier = Modifier.padding(vertical = 12.dp, horizontal = 12.dp),
+                            modifier = Modifier.padding(vertical = 14.dp, horizontal = 12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Row(
@@ -440,18 +441,18 @@ fun WorkOrdersScreen(
                                     Icons.Default.PauseCircleFilled,
                                     contentDescription = null,
                                     tint = SicoiWarning,
-                                    modifier = Modifier.size(14.dp)
+                                    modifier = Modifier.size(15.dp)
                                 )
                                 Text(
                                     "O.S. Pausadas",
                                     style = MaterialTheme.typography.labelMedium.copy(
                                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                        fontSize = 12.sp
+                                        fontSize = 13.sp
                                     ),
                                     color = SicoiWarning
                                 )
                             }
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -460,7 +461,7 @@ fun WorkOrdersScreen(
                                     "${pausedOrders.size}",
                                     style = MaterialTheme.typography.headlineMedium.copy(
                                         fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
-                                        fontSize = 24.sp
+                                        fontSize = 28.sp
                                     ),
                                     color = Color.White
                                 )
@@ -473,10 +474,10 @@ fun WorkOrdersScreen(
                                         "Acessar →",
                                         style = MaterialTheme.typography.labelSmall.copy(
                                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                            fontSize = 10.sp
+                                            fontSize = 11.sp
                                         ),
                                         color = SicoiWarning,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                                     )
                                 }
                             }
@@ -680,35 +681,38 @@ fun WorkOrderCard(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            // ── LINHA PRINCIPAL COMPACTA (Sempre visível) ──
+        val rawOsNumber = workOrder.getFullNumeroOs()
+            .replace("OS", "", ignoreCase = true)
+            .replace("O.S.", "", ignoreCase = true)
+            .replace("#", "")
+            .replace("º", "")
+            .replace("nº", "", ignoreCase = true)
+            .trim()
+        val displayOsTitle = if (rawOsNumber.isNotBlank()) "OS nº$rawOsNumber" else "OS Sem Número"
+
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+            // ── LINHA PRINCIPAL COMPACTA (Sempre visível e com largura ampla) ──
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 1. Número da O.S.
+                // 1. Número da O.S. (ex: OS nº221/26)
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(10.dp),
                     color = Color(0xFF282D3C),
-                    border = BorderStroke(1.dp, Color(0xFF3B4358))
+                    border = BorderStroke(1.dp, Color(0xFF3B4358)),
+                    modifier = Modifier.padding(end = 8.dp)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            Icons.Default.Tag,
-                            contentDescription = null,
-                            tint = if (isPaused) SicoiError else SicoiOrange,
-                            modifier = Modifier.size(16.dp)
-                        )
                         Text(
-                            text = "O.S. #${workOrder.getFullNumeroOs()}",
+                            text = displayOsTitle,
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontSize = 16.sp, 
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
                                 letterSpacing = 0.5.sp
                             ),
                             color = Color.White
@@ -734,7 +738,7 @@ fun WorkOrderCard(
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold, 
                                     fontSize = 11.sp
                                 ),
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
                             )
                         }
                     }
@@ -746,7 +750,7 @@ fun WorkOrderCard(
                         border = BorderStroke(1.dp, priorityColor.copy(alpha = 0.45f))
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
@@ -754,7 +758,7 @@ fun WorkOrderCard(
                                 priorityIcon, 
                                 contentDescription = null, 
                                 tint = if (displayPriority == "Emergência") Color.White else priorityColor, 
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(15.dp)
                             )
                             Text(
                                 text = displayPriority.uppercase(),
@@ -776,9 +780,9 @@ fun WorkOrderCard(
                         modifier = Modifier.clickable { isExpanded = !isExpanded }
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
                         ) {
                             Text(
                                 text = if (isExpanded) "Menos" else "Detalhes",
