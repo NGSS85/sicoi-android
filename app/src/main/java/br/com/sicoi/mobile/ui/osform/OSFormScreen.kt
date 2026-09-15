@@ -2593,115 +2593,164 @@ private fun OSHistoryCard(
     onToggleExpand: () -> Unit
 ) {
     val isFinished = item.status.trim().equals("Finalizada", ignoreCase = true) || item.status.trim().equals("Finalizado", ignoreCase = true)
-    val displayStatus = if (isFinished) "Finalizada" else "Em Aberto"
-    val borderCol = if (isFinished) SicoiSuccess.copy(alpha = 0.4f) else SicoiOrange.copy(alpha = 0.4f)
+    val isPaused = item.status.trim().equals("Pausada", ignoreCase = true) || item.status.trim().equals("Pausado", ignoreCase = true)
     
-    // Busca o JSON decodificado da solucao_aplicada (se RQ-11 digital)
-    var equipmentNo = "Não informado"
-    var descriptionToExecute = item.descricaoProblema ?: ""
-    var descriptionExecuted = "Sem descrição cadastrada"
-    var dateFinished = "N/A"
-    
-    item.solucaoAplicada?.let { sol ->
-        if (sol.startsWith("[RQ-11-DIGITAL]:")) {
-            try {
-                val jsonStr = sol.removePrefix("[RQ-11-DIGITAL]:").trim()
-                val payload = Json.decodeFromString<OSExecutionPayload>(jsonStr)
-                equipmentNo = payload.equipmentNo.ifBlank { "Não informado" }
-                if (payload.descriptionToExecute.isNotBlank()) {
-                    descriptionToExecute = payload.descriptionToExecute
-                }
-                if (payload.descriptionExecuted.isNotBlank()) {
-                    descriptionExecuted = payload.descriptionExecuted
-                }
-                if (payload.finalDate.isNotBlank()) {
-                    dateFinished = "${payload.finalDate} às ${payload.finalHour}"
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("OSFormScreen", "Erro ao decodificar JSON do histórico: ${e.message}")
-            }
-        }
+    val displayStatus = when {
+        isFinished -> "Finalizada"
+        isPaused -> "Pausada"
+        else -> "Em Aberto"
     }
+    
+    val statusColor = when {
+        isFinished -> SicoiSuccess
+        isPaused -> SicoiWarning
+        else -> SicoiOrange
+    }
+
+    val finalOsNumber = item.getFullNumeroOs()
+    val finalEquipment = item.getFullEquipment()
+    val finalPatrimonio = item.getFullPatrimonio()
+    val finalTechnician = item.getFullTechnician()
+    val finalDescriptionExecuted = item.getFullDescriptionExecuted()
+    val finalCompletionDateTime = item.getFullFinalDateTime()
+    val descriptionToExecute = item.descricaoProblema?.ifBlank { "Sem descrição informada" } ?: "Sem descrição informada"
 
     Card(
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = SicoiCard),
-        border = BorderStroke(1.dp, borderCol),
+        border = BorderStroke(1.dp, statusColor.copy(alpha = 0.4f)),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            // Top row: OS Number + Status
+        Column(modifier = Modifier.padding(14.dp)) {
+            // Linha 1: Número da O.S. + Status Badge
             Row(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "OS: #${item.numeroOs ?: item.id.take(8).uppercase()}",
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = SicoiTextPrimary
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Tag, 
+                        contentDescription = null, 
+                        tint = SicoiOrange, 
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "OS: #$finalOsNumber",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 16.sp
+                        ),
+                        color = SicoiTextPrimary
+                    )
+                }
                 
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = (if (isFinished) SicoiSuccess else SicoiOrange).copy(alpha = 0.12f),
-                    border = BorderStroke(1.dp, (if (isFinished) SicoiSuccess else SicoiOrange).copy(alpha = 0.3f))
+                    color = statusColor.copy(alpha = 0.14f),
+                    border = BorderStroke(1.dp, statusColor.copy(alpha = 0.4f))
                 ) {
                     Text(
                         text = displayStatus,
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = if (isFinished) SicoiSuccess else SicoiOrange,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        color = statusColor,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                     )
                 }
             }
 
-            HorizontalDivider(color = SicoiDivider, modifier = Modifier.padding(bottom = 8.dp))
+            HorizontalDivider(color = SicoiDivider, modifier = Modifier.padding(bottom = 10.dp))
 
-            // Detalhes Gerais
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            // Detalhes Principais: Equipamento e Patrimônio
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(Icons.Default.Settings, contentDescription = null, tint = SicoiTextMuted, modifier = Modifier.size(15.dp))
                     Text("Equipamento:", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = SicoiTextMuted)
-                    Text(item.equipamento ?: "Equipamento Geral", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = SicoiTextPrimary)
+                    Text(
+                        finalEquipment, 
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.ExtraBold), 
+                        color = SicoiTextPrimary
+                    )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(Icons.Default.Tag, contentDescription = null, tint = SicoiTextMuted, modifier = Modifier.size(15.dp))
                     Text("Patrimônio:", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = SicoiTextMuted)
-                    Text(equipmentNo, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = SicoiTextPrimary)
+                    Text(
+                        finalPatrimonio, 
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), 
+                        color = SicoiTextPrimary
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(Icons.Default.Person, contentDescription = null, tint = SicoiTextMuted, modifier = Modifier.size(15.dp))
+                    Text("Técnico:", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = SicoiTextMuted)
+                    Text(
+                        finalTechnician, 
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), 
+                        color = if (finalTechnician != "Não atribuído") SicoiTextPrimary else SicoiTextMuted
+                    )
                 }
             }
 
-            // Expanded content section
+            // Seção Expandida com comentários e data de finalização
             if (isExpanded) {
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+                
                 if (isFinished) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(SicoiSuccess.copy(alpha = 0.05f))
-                            .border(1.dp, SicoiSuccess.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
-                            .padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(SicoiSuccess.copy(alpha = 0.06f))
+                            .border(1.dp, SicoiSuccess.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Detalhamento Técnico:", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = SicoiSuccess)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = SicoiSuccess, modifier = Modifier.size(16.dp))
+                            Text("Comentário / Serviço Executado pelo Técnico:", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = SicoiSuccess)
+                        }
                         Text(
-                            text = descriptionExecuted,
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                            text = finalDescriptionExecuted,
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                             color = SicoiTextPrimary
                         )
-                        HorizontalDivider(color = SicoiSuccess.copy(alpha = 0.1f))
+                        HorizontalDivider(color = SicoiSuccess.copy(alpha = 0.15f))
+                        
+                        // Data e Hora da finalização
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Encerrado em: ${if (dateFinished != "N/A") dateFinished else item.dataFim ?: "—"}",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                color = SicoiTextMuted
+                                text = "Finalizado em: ${finalCompletionDateTime ?: item.dataFim ?: "Data não informada"}",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp),
+                                color = SicoiTextPrimary
                             )
                             Text(
-                                text = "Téc: ${item.tecnicoResponsavel ?: "—"}",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                text = "Téc: $finalTechnician",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                                 color = SicoiTextMuted
                             )
                         }
@@ -2710,33 +2759,39 @@ private fun OSHistoryCard(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(SicoiOrange.copy(alpha = 0.05f))
-                            .border(1.dp, SicoiOrange.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
-                            .padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(SicoiOrange.copy(alpha = 0.06f))
+                            .border(1.dp, SicoiOrange.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Motivo da Solicitação:", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = SicoiOrange)
-                        Text(
-                            text = descriptionToExecute,
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                            color = SicoiTextPrimary
-                        )
-                        HorizontalDivider(color = SicoiOrange.copy(alpha = 0.1f))
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(SicoiError)
+                            Icon(Icons.Default.Info, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(16.dp))
+                            Text("Motivo da Solicitação:", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = SicoiOrange)
+                        }
+                        Text(
+                            text = descriptionToExecute,
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                            color = SicoiTextPrimary
+                        )
+                        HorizontalDivider(color = SicoiOrange.copy(alpha = 0.15f))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Aberta em: ${item.dataAbertura ?: "—"}",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                color = SicoiTextMuted
                             )
                             Text(
-                                text = "Não finalizado",
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black),
-                                color = SicoiError
+                                text = if (isPaused) "Status: Pausada" else "Status: Aguardando técnico",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp),
+                                color = if (isPaused) SicoiWarning else SicoiOrange
                             )
                         }
                     }
@@ -2746,7 +2801,7 @@ private fun OSHistoryCard(
             Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider(color = SicoiDivider)
 
-            // Toggle Button
+            // Botão de Expandir / Recuar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -2756,15 +2811,15 @@ private fun OSHistoryCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (isExpanded) "Recuar" else "Expandir Detalhes",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = SicoiBlueLight)
+                    text = if (isExpanded) "Recuar Detalhes" else "Ver Detalhes da O.S.",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = SicoiOrange)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                     contentDescription = null,
-                    tint = SicoiBlueLight,
-                    modifier = Modifier.size(16.dp)
+                    tint = SicoiOrange,
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }

@@ -64,8 +64,44 @@ data class WorkOrder(
 
     fun getFullRequester(): String {
         if (!solicitante.isNullOrBlank()) return solicitante
-        val fromPayload = parsePayloadField { it.responsible }
+        val fromPayload = parsePayloadField { it.responsible.ifBlank { it.solicitante.ifBlank { it.requester } } }
         return if (!fromPayload.isNullOrBlank()) fromPayload else (solicitante ?: "Não informado")
+    }
+
+    fun getFullPatrimonio(): String {
+        val fromPayload = parsePayloadField { it.equipmentNo }
+        return if (!fromPayload.isNullOrBlank()) fromPayload else "Não informado"
+    }
+
+    fun getFullTechnician(): String {
+        if (!tecnicoResponsavel.isNullOrBlank() && tecnicoResponsavel != "Não Atribuído") return tecnicoResponsavel
+        val fromPayload = parsePayloadField { it.vistoExecutante.ifBlank { it.assignedTechnician } }
+        return if (!fromPayload.isNullOrBlank() && fromPayload != "Não Atribuído") fromPayload else (tecnicoResponsavel ?: "Não atribuído")
+    }
+
+    fun getFullNumeroOs(): String {
+        if (!numeroOs.isNullOrBlank()) return numeroOs
+        val fromPayload = parsePayloadField { it.osNumber }
+        return if (!fromPayload.isNullOrBlank()) fromPayload else "OS-${id.take(8).uppercase()}"
+    }
+
+    fun getFullDescriptionExecuted(): String {
+        val fromPayload = parsePayloadField { it.descriptionExecuted }
+        if (!fromPayload.isNullOrBlank()) return fromPayload
+        if (!solucaoAplicada.isNullOrBlank() && !solucaoAplicada.startsWith("[RQ-11-DIGITAL]:")) {
+            return solucaoAplicada
+        }
+        return "Sem descrição de execução cadastrada"
+    }
+
+    fun getFullFinalDateTime(): String? {
+        val dateP = parsePayloadField { it.finalDate }
+        val hourP = parsePayloadField { it.finalHour }
+        if (!dateP.isNullOrBlank()) {
+            return if (!hourP.isNullOrBlank()) "$dateP às $hourP" else dateP
+        }
+        if (!dataFim.isNullOrBlank()) return dataFim
+        return null
     }
 
     fun getPhotoUrls(): List<String> {

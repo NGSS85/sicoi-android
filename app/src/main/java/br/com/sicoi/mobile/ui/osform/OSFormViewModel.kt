@@ -207,27 +207,16 @@ class OSFormViewModel @Inject constructor(
             loadingHistory = true
             repository.fetchAllWorkOrders().fold(
                 onSuccess = { list ->
-                    // Filtra para manter somente as digitais (RQ-11)
-                    val filtered = list.filter { it.solucaoAplicada?.contains("[RQ-11-DIGITAL]") == true }
-                        .filter { item ->
-                            // Mostra apenas ordens de serviço solicitadas por este usuário (technicianName)
-                            val matchesSolicitante = item.solicitante?.equals(technicianName, ignoreCase = true) == true
-                            var matchesJsonResponsible = false
-                            item.solucaoAplicada?.let { sol ->
-                                if (sol.startsWith("[RQ-11-DIGITAL]:")) {
-                                    try {
-                                        val jsonStr = sol.removePrefix("[RQ-11-DIGITAL]:").trim()
-                                        val payload = Json.decodeFromString<OSExecutionPayload>(jsonStr)
-                                        if (payload.responsible.equals(technicianName, ignoreCase = true)) {
-                                            matchesJsonResponsible = true
-                                        }
-                                    } catch (e: Exception) {
-                                        // ignore parsing errors
-                                    }
-                                }
-                            }
-                            matchesSolicitante || matchesJsonResponsible
-                        }
+                    val reqName = technicianName.trim()
+                    val filtered = list.filter { item ->
+                        if (reqName.isBlank()) return@filter true
+                        val requester = item.getFullRequester().trim()
+                        val direct = (item.solicitante ?: "").trim()
+                        requester.equals(reqName, ignoreCase = true) ||
+                        direct.equals(reqName, ignoreCase = true) ||
+                        requester.contains(reqName, ignoreCase = true) ||
+                        direct.contains(reqName, ignoreCase = true)
+                    }.sortedByDescending { it.numeroOs ?: it.dataAbertura ?: it.id }
                     allWorkOrders = filtered
                 },
                 onFailure = {
