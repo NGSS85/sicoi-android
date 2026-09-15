@@ -1750,33 +1750,175 @@ private fun TechnicianExecutionSection(
 ) {
     val context = LocalContext.current
 
-    // Card 1: Controle de Pausa da O.S. + Serviço Externo
+    // ── CARD 1: INTERVENÇÃO (PRIMEIRO QUADRO COM TÍTULO CENTRALIZADO) ──
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = SicoiCard),
+        border = BorderStroke(1.5.dp, SicoiOrange.copy(alpha = 0.8f))
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Título Centralizado acima
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(SicoiOrange.copy(alpha = 0.18f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Build, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(24.dp))
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    "Intervenção",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 18.sp,
+                        letterSpacing = 0.3.sp
+                    ),
+                    color = SicoiOrange,
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            HorizontalDivider(color = SicoiOrange.copy(alpha = 0.25f))
+
+            OutlinedTextField(
+                value = viewModel.descriptionExecuted,
+                onValueChange = { viewModel.descriptionExecuted = it },
+                placeholder = { Text("Relate o que foi feito para solucionar o problema...", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
+                label = { Text("Descrição do Serviço Executado") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                minLines = 4,
+                colors = sicoiTextFieldColors()
+            )
+
+            HorizontalDivider(color = SicoiDivider)
+
+            Text(
+                "Fotos / Comprovantes de Serviço Executado (Opcional)",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = SicoiTextSecondary,
+                    letterSpacing = 0.5.sp
+                )
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Botão 1: Anexar
+                OutlinedButton(
+                    onClick = { onRequestAttach("service") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.5f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = SicoiOrange)
+                ) {
+                    Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Anexar", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                }
+
+                // Botão 2: Câmera
+                Button(
+                    onClick = { onRequestCamera("service") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = SicoiOrange, contentColor = Color.White)
+                ) {
+                    Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Tirar Foto", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                }
+            }
+
+            if (serviceBitmaps.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                LazyRow(
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(serviceBitmaps.size) { index ->
+                        Box(modifier = Modifier.padding(horizontal = 4.dp).size(72.dp)) {
+                            Image(
+                                bitmap = serviceBitmaps[index].asImageBitmap(),
+                                contentDescription = "Foto ${index + 1}",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .border(1.dp, SicoiCardBorder, RoundedCornerShape(10.dp))
+                            )
+                            IconButton(
+                                onClick = {
+                                    onServiceBitmapsChange(serviceBitmaps.toMutableList().also { it.removeAt(index) })
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .size(20.dp)
+                                    .background(SicoiError.copy(alpha = 0.85f), CircleShape)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "Remover", tint = Color.White, modifier = Modifier.size(12.dp))
+                            }
+                        }
+                    }
+                }
+                Text(
+                    "${serviceBitmaps.size} foto(s) selecionada(s)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SicoiTextMuted,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp)
+                )
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
+    // ── CARD 2: APONTAMENTO DE PAUSAS & SERVIÇO EXTERNO (QUADRO ABAIXO) ──
+    Card(
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = SicoiCard),
         border = BorderStroke(1.dp, SicoiOrangeBorder)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // ── Cabeçalho: Apontamento de Pausas ──
+            // ── Apontamento de Pausas (Título 15% maior e alinhado perfeitamente com o ícone) ──
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
-                        .background(SicoiOrange.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                        .size(40.dp)
+                        .background(SicoiOrange.copy(alpha = 0.18f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Schedule, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.Schedule, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(22.dp))
                 }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Apontamento de Pausas", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
-                    Text("Pausar a execução da ordem de serviço", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
-                }
+                Text(
+                    "Apontamento de Pausas",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 17.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.3.sp
+                    ),
+                    color = SicoiTextPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+
                 // Botão de Toggle Pausa
                 val isPaused = viewModel.pauseState == "active"
                 Button(
@@ -1795,8 +1937,8 @@ private fun TechnicianExecutionSection(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isPaused) SicoiError else SicoiOrange
                     ),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Text(
                         if (isPaused) "Pausa Ativada" else "Ativar Pausa",
@@ -1846,7 +1988,6 @@ private fun TechnicianExecutionSection(
                                 style = MaterialTheme.typography.bodySmall.copy(color = SicoiTextMuted)
                             )
                             if (attachmentUrl != null) {
-                                val context = androidx.compose.ui.platform.LocalContext.current
                                 val isImage = attachmentUrl.endsWith(".jpg", ignoreCase = true) || 
                                               attachmentUrl.endsWith(".jpeg", ignoreCase = true) || 
                                               attachmentUrl.endsWith(".png", ignoreCase = true) || 
@@ -1897,23 +2038,29 @@ private fun TechnicianExecutionSection(
 
             HorizontalDivider(color = SicoiDivider)
 
-            // ── Sub-seção: Serviço Externo ──
+            // ── Serviço Externo (Título 15% maior e alinhado perfeitamente com o ícone) ──
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
-                        .background(SicoiBlue.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                        .size(40.dp)
+                        .background(SicoiBlue.copy(alpha = 0.18f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Settings, contentDescription = null, tint = SicoiBlue, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.Settings, contentDescription = null, tint = SicoiBlue, modifier = Modifier.size(22.dp))
                 }
-                Column {
-                    Text("Serviço Externo", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = SicoiTextPrimary)
-                    Text("Necessidade de intervenção externa", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
-                }
+                Text(
+                    "Serviço Externo",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 17.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.3.sp
+                    ),
+                    color = SicoiTextPrimary
+                )
             }
 
             Text(
@@ -1975,14 +2122,14 @@ private fun TechnicianExecutionSection(
 
     Spacer(modifier = Modifier.height(14.dp))
 
-    // Card 3: Materiais Utilizados
+    // ── CARD 3: MATERIAIS UTILIZADOS ──
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = SicoiCard),
-        border = BorderStroke(1.dp, SicoiSuccess.copy(alpha = 0.3f))
+        border = BorderStroke(1.dp, SicoiSuccess.copy(alpha = 0.4f))
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
@@ -1992,18 +2139,18 @@ private fun TechnicianExecutionSection(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
-                            .background(SicoiSuccess.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                            .size(40.dp)
+                            .background(SicoiSuccess.copy(alpha = 0.18f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.List, contentDescription = null, tint = SicoiSuccess, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.List, contentDescription = null, tint = SicoiSuccess, modifier = Modifier.size(22.dp))
                     }
                     Column {
-                        Text("Material Utilizado", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
+                        Text("Material Utilizado", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 17.5.sp), color = SicoiTextPrimary)
                         Text("Peças e insumos aplicados", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
                     }
                 }
@@ -2138,17 +2285,20 @@ private fun TechnicianExecutionSection(
 
             if (materialBitmaps.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyRow(
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     items(materialBitmaps.size) { index ->
-                        Box(modifier = Modifier.size(64.dp)) {
+                        Box(modifier = Modifier.padding(horizontal = 4.dp).size(72.dp)) {
                             Image(
                                 bitmap = materialBitmaps[index].asImageBitmap(),
                                 contentDescription = "Foto ${index + 1}",
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .border(1.dp, SicoiCardBorder, RoundedCornerShape(8.dp))
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .border(1.dp, SicoiCardBorder, RoundedCornerShape(10.dp))
                             )
                             IconButton(
                                 onClick = {
@@ -2156,10 +2306,10 @@ private fun TechnicianExecutionSection(
                                 },
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .size(18.dp)
+                                    .size(20.dp)
                                     .background(SicoiError.copy(alpha = 0.85f), CircleShape)
                             ) {
-                                Icon(Icons.Default.Close, contentDescription = "Remover", tint = Color.White, modifier = Modifier.size(10.dp))
+                                Icon(Icons.Default.Close, contentDescription = "Remover", tint = Color.White, modifier = Modifier.size(12.dp))
                             }
                         }
                     }
@@ -2168,7 +2318,8 @@ private fun TechnicianExecutionSection(
                     "${materialBitmaps.size} foto(s) selecionada(s)",
                     style = MaterialTheme.typography.labelSmall,
                     color = SicoiTextMuted,
-                    modifier = Modifier.padding(top = 2.dp)
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp)
                 )
             }
         }
@@ -2176,130 +2327,7 @@ private fun TechnicianExecutionSection(
 
     Spacer(modifier = Modifier.height(14.dp))
 
-    // Card 4: Descrição do Serviço Executado
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SicoiCard),
-        border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.3f))
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .background(SicoiOrange.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.Build, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(20.dp))
-                }
-                Column {
-                    Text("Serviço Executado", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
-                    Text("Detalhamento da solução aplicada", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
-                }
-            }
-
-            HorizontalDivider(color = SicoiDivider)
-
-            OutlinedTextField(
-                value = viewModel.descriptionExecuted,
-                onValueChange = { viewModel.descriptionExecuted = it },
-                placeholder = { Text("Relate o que foi feito para solucionar o problema...", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
-                label = { Text("Descrição do Serviço Executado") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(10.dp),
-                minLines = 4,
-                colors = sicoiTextFieldColors()
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-            HorizontalDivider(color = SicoiDivider)
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                "Fotos / Comprovantes de Serviço Executado (Opcional)",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    color = SicoiTextSecondary,
-                    letterSpacing = 0.5.sp
-                )
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Botão 1: Anexar
-                OutlinedButton(
-                    onClick = { onRequestAttach("service") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.5f)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = SicoiOrange)
-                ) {
-                    Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Anexar", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
-                }
-
-                // Botão 2: Câmera
-                Button(
-                    onClick = { onRequestCamera("service") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = SicoiOrange, contentColor = Color.White)
-                ) {
-                    Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Tirar Foto", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
-                }
-            }
-
-            if (serviceBitmaps.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(serviceBitmaps.size) { index ->
-                        Box(modifier = Modifier.size(64.dp)) {
-                            Image(
-                                bitmap = serviceBitmaps[index].asImageBitmap(),
-                                contentDescription = "Foto ${index + 1}",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .border(1.dp, SicoiCardBorder, RoundedCornerShape(8.dp))
-                            )
-                            IconButton(
-                                onClick = {
-                                    onServiceBitmapsChange(serviceBitmaps.toMutableList().also { it.removeAt(index) })
-                                },
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .size(18.dp)
-                                    .background(SicoiError.copy(alpha = 0.85f), CircleShape)
-                            ) {
-                                Icon(Icons.Default.Close, contentDescription = "Remover", tint = Color.White, modifier = Modifier.size(10.dp))
-                            }
-                        }
-                    }
-                }
-                Text(
-                    "${serviceBitmaps.size} foto(s) selecionada(s)",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = SicoiTextMuted,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-            }
-        }
-    }
-
-    Spacer(modifier = Modifier.height(14.dp))
-
-    // Card 5: Encerramento
+    // ── CARD 4: ENCERRAMENTO ──
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SicoiCard),
