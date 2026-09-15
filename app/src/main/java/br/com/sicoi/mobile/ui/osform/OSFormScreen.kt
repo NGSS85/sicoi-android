@@ -989,13 +989,6 @@ fun OSFormScreen(
                                 }
                             }
                         } else {
-                                            } else {
-                                                Text(
-                                                    "Nenhuma imagem anexada pelo solicitante",
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    color = SicoiTextMuted
-                                                )
-=======
                             when (selectedTabIndex) {
                                 // ══════════════════════════════════════════════
                                 // ABA 0 (TÉCNICO): Informações do Solicitante

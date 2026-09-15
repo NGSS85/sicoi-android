@@ -57,7 +57,6 @@ class OSFormViewModel @Inject constructor(
     var solicitanteForm      by androidx.compose.runtime.mutableStateOf("")
     var setorForm            by androidx.compose.runtime.mutableStateOf("")
     var equipamentoForm      by androidx.compose.runtime.mutableStateOf("")
-    var setorForm            by androidx.compose.runtime.mutableStateOf("")
     var patrimonioForm       by androidx.compose.runtime.mutableStateOf("")
     var prioridadeForm       by androidx.compose.runtime.mutableStateOf("Normal")
     var descricaoForm        by androidx.compose.runtime.mutableStateOf("")
