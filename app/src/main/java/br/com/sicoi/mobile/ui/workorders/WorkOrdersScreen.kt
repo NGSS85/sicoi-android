@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -294,103 +295,192 @@ fun WorkOrdersScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                // Nome do técnico e boas-vindas
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                // ── NOVO CARD DO TÉCNICO MODERNO ───────────────────────────
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFF181B22),
+                    border = BorderStroke(1.dp, Color(0xFF2E3545)),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        technicianName.uppercase(),
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontSize = 38.sp,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
-                            letterSpacing = 1.sp,
-                            shadow = androidx.compose.ui.graphics.Shadow(
-                                color = SicoiOrange.copy(alpha = 0.6f),
-                                offset = androidx.compose.ui.geometry.Offset(0f, 4f),
-                                blurRadius = 8f
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        // Avatar com gradiente e ícone
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(
+                                    brush = Brush.linearGradient(
+                                        colors = listOf(SicoiOrange, Color(0xFFD84315))
+                                    ),
+                                    shape = RoundedCornerShape(14.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Engineering,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp)
                             )
-                        ),
-                        color = SicoiOrange,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 42.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "Bem vindo técnico, essas são suas atividades",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 16.sp,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
-                        ),
-                        color = Color.White.copy(alpha = 0.75f),
-                        textAlign = TextAlign.Center
-                    )
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = SicoiOrange.copy(alpha = 0.15f),
+                                border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.3f))
+                            ) {
+                                Text(
+                                    "PAINEL DO TÉCNICO",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                                        fontSize = 10.sp,
+                                        letterSpacing = 0.5.sp
+                                    ),
+                                    color = SicoiOrange,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                technicianName.uppercase(),
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontSize = 20.sp,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                                    letterSpacing = 0.5.sp
+                                ),
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                "Atividades e ordens em andamento",
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                                color = SicoiTextMuted
+                            )
+                        }
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Cards de métricas (Ordens ativas | O.S Pausadas)
+                // Cards de métricas interativos (Ordens ativas | O.S Pausadas com Acesso Direto)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     // Card: Ordens ativas
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Color.White.copy(alpha = 0.07f))
-                            .border(1.dp, SicoiOrangeBorder, RoundedCornerShape(14.dp))
-                            .padding(vertical = 16.dp, horizontal = 12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Surface(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color(0xFF1E222D),
+                        border = BorderStroke(1.dp, SicoiOrange.copy(alpha = 0.35f))
                     ) {
-                        Text(
-                            "Ordens ativas",
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
-                                letterSpacing = 0.5.sp
-                            ),
-                            color = SicoiOrange
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            "${activeOrders.size}",
-                            style = MaterialTheme.typography.displaySmall.copy(
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Black
-                            ),
-                            color = Color.White
-                        )
+                        Column(
+                            modifier = Modifier.padding(vertical = 12.dp, horizontal = 12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(SicoiOrange)
+                                )
+                                Text(
+                                    "Ordens Ativas",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                        fontSize = 12.sp
+                                    ),
+                                    color = SicoiOrange
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "${activeOrders.size}",
+                                style = MaterialTheme.typography.headlineMedium.copy(
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                                    fontSize = 24.sp
+                                ),
+                                color = Color.White
+                            )
+                        }
                     }
 
-                    // Card: O.S Pausadas
-                    Column(
+                    // Card: O.S Pausadas (CLICÁVEL - ACESSO DIRETO)
+                    Surface(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Color.White.copy(alpha = 0.07f))
-                            .border(1.dp, SicoiWarningBorder, RoundedCornerShape(14.dp))
-                            .padding(vertical = 16.dp, horizontal = 12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .clickable { onNavigateToPausedOrders(technicianName) },
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (pausedOrders.isNotEmpty()) SicoiWarning.copy(alpha = 0.12f) else Color(0xFF1E222D),
+                        border = BorderStroke(
+                            1.dp, 
+                            if (pausedOrders.isNotEmpty()) SicoiWarning.copy(alpha = 0.6f) else Color(0xFF2E3545)
+                        )
                     ) {
-                        Text(
-                            "O.S Pausadas",
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
-                                letterSpacing = 0.5.sp
-                            ),
-                            color = SicoiWarning
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            "${pausedOrders.size}",
-                            style = MaterialTheme.typography.displaySmall.copy(
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Black
-                            ),
-                            color = Color.White
-                        )
+                        Column(
+                            modifier = Modifier.padding(vertical = 12.dp, horizontal = 12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.PauseCircleFilled,
+                                    contentDescription = null,
+                                    tint = SicoiWarning,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    "O.S. Pausadas",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                        fontSize = 12.sp
+                                    ),
+                                    color = SicoiWarning
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    "${pausedOrders.size}",
+                                    style = MaterialTheme.typography.headlineMedium.copy(
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                                        fontSize = 24.sp
+                                    ),
+                                    color = Color.White
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = SicoiWarning.copy(alpha = 0.2f),
+                                    border = BorderStroke(1.dp, SicoiWarning.copy(alpha = 0.4f))
+                                ) {
+                                    Text(
+                                        "Acessar →",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                            fontSize = 10.sp
+                                        ),
+                                        color = SicoiWarning,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -565,60 +655,12 @@ fun WorkOrderCard(
         else         -> Icons.Default.CheckCircleOutline
     }
 
-    var photoUrls by remember { mutableStateOf<List<String>>(emptyList()) }
-    var comentarioTecnico by remember { mutableStateOf<String?>(null) }
-    var anexoUrl by remember { mutableStateOf<String?>(null) }
-    var extractedSolicitante by remember { mutableStateOf<String?>(workOrder.solicitante) }
-
-    LaunchedEffect(workOrder.solucaoAplicada) {
-        val sol = workOrder.solucaoAplicada
-        if (sol != null) {
-            if (sol.startsWith("[RQ-11-DIGITAL]:")) {
-                try {
-                    val jsonStr = sol.removePrefix("[RQ-11-DIGITAL]:").trim()
-                    val payload = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString<br.com.sicoi.mobile.data.model.OSExecutionPayload>(jsonStr)
-                    photoUrls = payload.photoAttachments.map { it.url }
-                    extractedSolicitante = payload.responsible.ifBlank { workOrder.solicitante }
-                    
-                    val lastObs = payload.pauseObservations.lastOrNull()
-                    if (!lastObs.isNullOrBlank()) {
-                        val pattern = Regex("""\s*\[Anexo:\s*(https?://[^\s\]]+)\]""")
-                        val match = pattern.find(lastObs)
-                        if (match != null) {
-                            anexoUrl = match.groupValues[1]
-                            comentarioTecnico = lastObs.replace(match.value, "").trim()
-                        } else {
-                            comentarioTecnico = lastObs
-                            anexoUrl = null
-                        }
-                    } else if (!payload.pauseReason.isNullOrBlank()) {
-                        comentarioTecnico = payload.pauseReason
-                        anexoUrl = null
-                    } else {
-                        comentarioTecnico = null
-                        anexoUrl = null
-                    }
-                } catch (e: Exception) {
-                    comentarioTecnico = null
-                    anexoUrl = null
-                }
-            } else if (sol.isNotBlank()) {
-                comentarioTecnico = sol
-                anexoUrl = null
-            } else {
-                comentarioTecnico = null
-                anexoUrl = null
-            }
-        } else {
-            comentarioTecnico = null
-            anexoUrl = null
-        }
-    }
+    var isExpanded by remember { mutableStateOf(false) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "BlinkTransition")
     val blinkAlpha by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (displayPriority == "Emergência") 0.3f else 1f,
+        targetValue = if (displayPriority == "Emergência") 0.35f else 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(600, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
@@ -629,144 +671,234 @@ fun WorkOrderCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .alpha(if (isPaused) 0.7f else 1f),
+            .alpha(if (isPaused) 0.85f else 1f),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = if (isPaused) SicoiSurface else SicoiCard),
-        border = BorderStroke(1.dp, if (isPaused) SicoiError.copy(alpha = 0.3f) else priorityColor.copy(alpha = 0.2f))
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E222D)),
+        border = BorderStroke(
+            1.dp, 
+            if (isPaused) SicoiError.copy(alpha = 0.4f) else priorityColor.copy(alpha = 0.35f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Header da OS
+        Column(modifier = Modifier.padding(14.dp)) {
+            // ── LINHA PRINCIPAL COMPACTA (Sempre visível) ──
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // 1. Número da O.S.
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFF282D3C),
+                    border = BorderStroke(1.dp, Color(0xFF3B4358))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Tag,
+                            contentDescription = null,
+                            tint = if (isPaused) SicoiError else SicoiOrange,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "O.S. #${workOrder.getFullNumeroOs()}",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontSize = 16.sp, 
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                                letterSpacing = 0.5.sp
+                            ),
+                            color = Color.White
+                        )
+                    }
+                }
+
+                // 2. Badges (Pausada + Prioridade: Normal, Urgente, Emergência) + Botão Expandir
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Assignment,
-                        contentDescription = null,
-                        tint = if (isPaused) SicoiError else SicoiOrange,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        workOrder.numeroOs ?: "Sem Número",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontSize = 24.sp, 
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
-                            textDecoration = if (isPaused) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
-                        ),
-                        color = if (isPaused) SicoiTextMuted else SicoiTextPrimary
-                    )
-                }
-
-                // Badge de prioridade (e badge de Pausa)
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
                     if (isPaused) {
-                        Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(SicoiError.copy(alpha = 0.15f))
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = SicoiError.copy(alpha = 0.15f),
+                            border = BorderStroke(1.dp, SicoiError.copy(alpha = 0.4f))
                         ) {
-                            Text("PAUSADA", style = MaterialTheme.typography.titleMedium.copy(color = SicoiError, fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold, fontSize = 16.sp, letterSpacing = 0.sp))
+                            Text(
+                                "PAUSADA",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = SicoiError, 
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold, 
+                                    fontSize = 11.sp
+                                ),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                            )
                         }
                     }
-                    
+
+                    // Badge de Prioridade
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = priorityColor.copy(alpha = if (displayPriority == "Emergência") 0.85f * blinkAlpha else 0.15f),
+                        border = BorderStroke(1.dp, priorityColor.copy(alpha = 0.45f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                priorityIcon, 
+                                contentDescription = null, 
+                                tint = if (displayPriority == "Emergência") Color.White else priorityColor, 
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = displayPriority.uppercase(),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                                    fontSize = 11.sp,
+                                    letterSpacing = 0.3.sp,
+                                    color = if (displayPriority == "Emergência") Color.White else priorityColor
+                                )
+                            )
+                        }
+                    }
+
+                    // 3. Botão Expandir / Recolher
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isExpanded) SicoiOrange.copy(alpha = 0.2f) else Color(0xFF282D3C),
+                        border = BorderStroke(1.dp, if (isExpanded) SicoiOrangeBorder else Color(0xFF3B4358)),
+                        modifier = Modifier.clickable { isExpanded = !isExpanded }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = if (isExpanded) "Menos" else "Detalhes",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = if (isExpanded) SicoiOrange else Color.White
+                                )
+                            )
+                            Icon(
+                                imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                contentDescription = if (isExpanded) "Recolher" else "Expandir",
+                                tint = if (isExpanded) SicoiOrange else Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // ── CONTEÚDO EXPANSÍVEL (Apenas quando isExpanded == true) ──
+            androidx.compose.animation.AnimatedVisibility(
+                visible = isExpanded,
+                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(),
+                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically()
+            ) {
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    HorizontalDivider(color = Color(0xFF2E3545), modifier = Modifier.padding(bottom = 12.dp))
+
+                    // 1. Equipamento completo
+                    WorkOrderInfoChip(
+                        icon = Icons.Default.PrecisionManufacturing,
+                        label = "Equipamento",
+                        value = workOrder.getFullEquipment(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // 2. Setor e Solicitante
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        WorkOrderInfoChip(
+                            icon = Icons.Default.Business,
+                            label = "Setor",
+                            value = workOrder.getFullSector(),
+                            modifier = Modifier.weight(1f)
+                        )
+                        WorkOrderInfoChip(
+                            icon = Icons.Default.Person,
+                            label = "Solicitante",
+                            value = workOrder.getFullRequester(),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    // 3. Descrição do Problema se houver
+                    val descricaoProblema = workOrder.descricaoProblema?.trim()
+                    if (!descricaoProblema.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFF252A36),
+                            border = BorderStroke(1.dp, Color(0xFF333B4D)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text(
+                                    "Descrição do Problema:",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                        fontSize = 11.sp
+                                    ),
+                                    color = SicoiOrange
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    descricaoProblema,
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                                    color = SicoiTextPrimary
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // 4. Botão Abrir ordem de serviço
+                    val buttonColor = if (isPaused && onReactivate != null) SicoiSuccess else SicoiOrange
                     Row(
                         modifier = Modifier
+                            .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(priorityColor.copy(alpha = if (displayPriority == "Emergência") 0.9f * blinkAlpha else 0.15f))
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .background(buttonColor)
+                            .border(1.dp, buttonColor, RoundedCornerShape(12.dp))
+                            .clickable { if (isPaused && onReactivate != null) onReactivate() else onClick() }
+                            .padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        Icon(priorityIcon, contentDescription = null, tint = if (displayPriority == "Emergência") Color.White else priorityColor, modifier = Modifier.size(22.dp))
                         Text(
-                            displayPriority,
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
-                                fontSize = 16.sp,
-                                letterSpacing = 0.sp,
-                                color = if (displayPriority == "Emergência") Color.White else priorityColor
+                            if (isPaused && onReactivate != null) "Reativar ordem de serviço" else "Abrir ordem de serviço", 
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = Color.White, 
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                                fontSize = 15.sp,
+                                letterSpacing = 0.5.sp
                             )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            if (isPaused && onReactivate != null) Icons.Default.PlayArrow else Icons.Default.ArrowForward, 
+                            contentDescription = null, 
+                            tint = Color.White, 
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
-            }
-
-            Divider(
-                modifier = Modifier.padding(vertical = 10.dp),
-                color = SicoiDivider
-            )
-
-            // Informações da OS (Apenas: Equipamento, Setor e Solicitante)
-            // 1. Equipamento completo
-            WorkOrderInfoChip(
-                icon = Icons.Default.PrecisionManufacturing,
-                label = "Equipamento",
-                value = workOrder.getFullEquipment(),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 2. Setor e Solicitante
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                WorkOrderInfoChip(
-                    icon = Icons.Default.Business,
-                    label = "Setor",
-                    value = workOrder.getFullSector(),
-                    modifier = Modifier.weight(1f)
-                )
-                WorkOrderInfoChip(
-                    icon = Icons.Default.Person,
-                    label = "Solicitante",
-                    value = workOrder.getFullRequester(),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Botão Abrir ordem de serviço (Laranja, largura total e em destaque)
-            val buttonColor = if (isPaused && onReactivate != null) SicoiSuccess else SicoiOrange
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(buttonColor)
-                    .border(1.dp, buttonColor, RoundedCornerShape(12.dp))
-                    .clickable { if (isPaused && onReactivate != null) onReactivate() else onClick() }
-                    .padding(vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    if (isPaused && onReactivate != null) "Reativar ordem de serviço" else "Abrir ordem de serviço", 
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color.White, 
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
-                        fontSize = 15.sp,
-                        letterSpacing = 0.5.sp
-                    )
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    if (isPaused && onReactivate != null) Icons.Default.PlayArrow else Icons.Default.ArrowForward, 
-                    contentDescription = null, 
-                    tint = Color.White, 
-                    modifier = Modifier.size(18.dp)
-                )
             }
         }
     }
