@@ -550,8 +550,8 @@ fun OSFormScreen(
                                     Text(
                                         title,
                                         style = MaterialTheme.typography.labelMedium.copy(
-                                            fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
-                                            fontSize = 12.sp
+                                            fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Medium,
+                                            fontSize = 15.sp
                                         ),
                                         color = if (selectedTabIndex == index) SicoiOrange else SicoiTextMuted
                                     )
@@ -597,7 +597,14 @@ fun OSFormScreen(
                                                     Icon(Icons.Default.Person, contentDescription = null, tint = SicoiSuccess, modifier = Modifier.size(20.dp))
                                                 }
                                                 Column {
-                                                    Text("Dados do Solicitante", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
+                                                    Text(
+                                                        "Dados do Solicitante", 
+                                                        style = MaterialTheme.typography.titleMedium.copy(
+                                                            fontSize = 19.sp,
+                                                            fontWeight = FontWeight.Bold
+                                                        ), 
+                                                        color = SicoiTextPrimary
+                                                    )
                                                     Text("Quem está abrindo a ordem de serviço", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
                                                 }
                                             }
@@ -671,7 +678,14 @@ fun OSFormScreen(
                                                     Icon(Icons.Default.Build, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(20.dp))
                                                 }
                                                 Column {
-                                                    Text("Dados do Equipamento", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
+                                                    Text(
+                                                        "Dados do Equipamento", 
+                                                        style = MaterialTheme.typography.titleMedium.copy(
+                                                            fontSize = 19.sp,
+                                                            fontWeight = FontWeight.Bold
+                                                        ), 
+                                                        color = SicoiTextPrimary
+                                                    )
                                                     Text("Informações do ativo e ocorrência", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
                                                 }
                                             }
@@ -698,7 +712,7 @@ fun OSFormScreen(
                                                 isTab1 = true
                                             )
 
-                                            // Prioridade — Seleção com chips
+                                            // Prioridade — Seleção sem quebra de texto
                                             Column {
                                                 Text(
                                                     "Prioridade *",
@@ -720,32 +734,32 @@ fun OSFormScreen(
                                                         "Normal" to SicoiSuccess
                                                     ).forEach { (label, color) ->
                                                         val isSelected = viewModel.prioridadeForm == label
-                                                        FilterChip(
-                                                            selected = isSelected,
-                                                            onClick = { viewModel.prioridadeForm = label },
-                                                            label = {
-                                                                Text(
-                                                                    label,
-                                                                    style = MaterialTheme.typography.labelMedium.copy(
-                                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                                                        fontSize = 13.2.sp
-                                                                    )
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .weight(1f)
+                                                                .clip(RoundedCornerShape(10.dp))
+                                                                .background(if (isSelected) color.copy(alpha = 0.2f) else SicoiSurface)
+                                                                .border(
+                                                                    width = 1.dp,
+                                                                    color = if (isSelected) color.copy(alpha = 0.8f) else SicoiCardBorder,
+                                                                    shape = RoundedCornerShape(10.dp)
                                                                 )
-                                                            },
-                                                            colors = FilterChipDefaults.filterChipColors(
-                                                                selectedContainerColor = color.copy(alpha = 0.2f),
-                                                                selectedLabelColor = color,
-                                                                containerColor = SicoiSurface,
-                                                                labelColor = SicoiTextMuted
-                                                            ),
-                                                            border = FilterChipDefaults.filterChipBorder(
-                                                                enabled = true,
-                                                                selected = isSelected,
-                                                                selectedBorderColor = color.copy(alpha = 0.5f),
-                                                                borderColor = SicoiCardBorder
-                                                            ),
-                                                            modifier = Modifier.weight(1f)
-                                                        )
+                                                                .clickable { viewModel.prioridadeForm = label }
+                                                                .padding(vertical = 10.dp, horizontal = 2.dp),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            Text(
+                                                                label,
+                                                                style = MaterialTheme.typography.labelMedium.copy(
+                                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                                    fontSize = 12.5.sp
+                                                                ),
+                                                                color = if (isSelected) color else SicoiTextMuted,
+                                                                maxLines = 1,
+                                                                softWrap = false,
+                                                                textAlign = TextAlign.Center
+                                                            )
+                                                        }
                                                     }
                                                 }
                                             }
@@ -1315,22 +1329,27 @@ fun OSFormScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Botão Salvar Formulário
+                            // Botão Salvar Formulário (Caixa branca com texto em laranja)
                             Button(
                                 onClick = { showConfirmDialog = true },
                                 modifier = Modifier.weight(1f).height(54.dp),
                                 shape = RoundedCornerShape(14.dp),
+                                border = BorderStroke(1.5.dp, SicoiOrange),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = SicoiOrange,
-                                    contentColor = Color.White
+                                    containerColor = Color.White,
+                                    contentColor = SicoiOrange
                                 ),
-                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
                             ) {
-                                Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Default.Save, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(20.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     "Salvar Formulário",
-                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                                    color = SicoiOrange,
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 15.5.sp
+                                    )
                                 )
                             }
 
