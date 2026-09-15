@@ -1174,14 +1174,15 @@ fun OSFormScreen(
                                                             }
                                                         }
                                                     } else {
-                                                        // Múltiplas fotos em carrossel horizontal
+                                                        // Múltiplas fotos centralizadas em relação à tela
                                                         LazyRow(
-                                                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                                            horizontalArrangement = Arrangement.Center,
                                                             modifier = Modifier.fillMaxWidth()
                                                         ) {
                                                             items(requesterPhotos) { photoUrl ->
                                                                 Box(
                                                                     modifier = Modifier
+                                                                        .padding(horizontal = 6.dp)
                                                                         .size(120.dp)
                                                                         .clip(RoundedCornerShape(14.dp))
                                                                         .background(SicoiSurface)
@@ -1250,48 +1251,49 @@ fun OSFormScreen(
                                             }
                                         }
 
-                                        // 3. RESTANTE DAS INFORMAÇÕES DO SOLICITANTE / EQUIPAMENTO
+                                        // 3. DADOS GERAIS DA SOLICITAÇÃO (CARD MODERNO E DESTACADO)
                                         Card(
-                                            shape = RoundedCornerShape(16.dp),
+                                            shape = RoundedCornerShape(18.dp),
                                             colors = CardDefaults.cardColors(containerColor = SicoiCard),
-                                            border = BorderStroke(1.dp, SicoiCardBorder)
+                                            border = BorderStroke(1.5.dp, SicoiSuccess.copy(alpha = 0.5f))
                                         ) {
                                             Column(
-                                                modifier = Modifier.padding(16.dp),
+                                                modifier = Modifier.padding(18.dp),
                                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                                             ) {
+                                                // Cabeçalho Centralizado com Ícone e Título Maior
                                                 Row(
+                                                    modifier = Modifier.fillMaxWidth(),
                                                     verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                                    horizontalArrangement = Arrangement.Center
                                                 ) {
                                                     Box(
                                                         modifier = Modifier
-                                                            .size(38.dp)
-                                                            .background(SicoiSuccess.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                                                            .size(40.dp)
+                                                            .background(SicoiSuccess.copy(alpha = 0.18f), CircleShape),
                                                         contentAlignment = Alignment.Center
                                                     ) {
                                                         Icon(
                                                             Icons.Default.Info,
                                                             contentDescription = null,
                                                             tint = SicoiSuccess,
-                                                            modifier = Modifier.size(22.dp)
+                                                            modifier = Modifier.size(24.dp)
                                                         )
                                                     }
-                                                    Column {
-                                                        Text(
-                                                            "DADOS GERAIS DA SOLICITAÇÃO",
-                                                            style = MaterialTheme.typography.titleMedium.copy(
-                                                                fontWeight = FontWeight.Bold,
-                                                                fontSize = 14.sp,
-                                                                letterSpacing = 0.5.sp
-                                                            ),
-                                                            color = SicoiTextPrimary
-                                                        )
-                                                        Text("Equipamento, setor e solicitante", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
-                                                    }
+                                                    Spacer(modifier = Modifier.width(12.dp))
+                                                    Text(
+                                                        "Dados Gerais da Solicitação",
+                                                        style = MaterialTheme.typography.titleLarge.copy(
+                                                            fontWeight = FontWeight.ExtraBold,
+                                                            fontSize = 18.sp,
+                                                            letterSpacing = 0.3.sp
+                                                        ),
+                                                        color = SicoiTextPrimary,
+                                                        textAlign = TextAlign.Center
+                                                    )
                                                 }
 
-                                                HorizontalDivider(color = SicoiDivider)
+                                                HorizontalDivider(color = SicoiSuccess.copy(alpha = 0.25f))
 
                                                 ReadOnlyOSField(
                                                     label = "Equipamento",
@@ -1381,8 +1383,8 @@ fun OSFormScreen(
                         }
 
                         // ─── Botões de Ação ───────────────────────────────────
-                        // No modo Solicitante, exibe o botão Salvar apenas na Aba 1 (Dados do Equipamento)
-                        if (!isRequesterMode || selectedTabIndex == 1) {
+                        // O botão Salvar Formulário deve aparecer APENAS na aba 1 (Execução do Técnico / Dados do Equipamento)
+                        if (selectedTabIndex == 1) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),

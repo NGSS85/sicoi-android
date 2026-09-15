@@ -690,28 +690,28 @@ fun WorkOrderCard(
             .trim()
         val displayOsTitle = if (rawOsNumber.isNotBlank()) "OS nº$rawOsNumber" else "OS Sem Número"
 
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = if (isExpanded) 14.dp else 16.dp)) {
             // ── LINHA PRINCIPAL COMPACTA (Sempre visível e com largura ampla) ──
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 1. Número da O.S. (ex: OS nº221/26)
+                // 1. Número da O.S. (ex: OS nº221/26) - Mais largo na vertical
                 Surface(
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(12.dp),
                     color = Color(0xFF282D3C),
                     border = BorderStroke(1.dp, Color(0xFF3B4358)),
                     modifier = Modifier.padding(end = 8.dp)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = displayOsTitle,
                             style = MaterialTheme.typography.titleMedium.copy(
-                                fontSize = 16.sp, 
+                                fontSize = 16.5.sp, 
                                 fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
                                 letterSpacing = 0.5.sp
                             ),
