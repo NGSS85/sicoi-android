@@ -706,77 +706,67 @@ fun WorkOrderCard(
                 color = SicoiDivider
             )
 
-            // Informações da OS (Modern Layout)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                WorkOrderInfoChip(
-                    icon = Icons.Default.PrecisionManufacturing,
-                    label = "Equipamento",
-                    value = workOrder.equipamento ?: "—",
-                    modifier = Modifier.weight(1f)
-                )
-                WorkOrderInfoChip(
-                    icon = Icons.Default.Business,
-                    label = "Setor",
-                    value = workOrder.setor ?: "—",
-                    modifier = Modifier.weight(1f)
-                )
-            }
+            // Informações da OS (Apenas: Equipamento, Setor e Solicitante)
+            // 1. Equipamento completo
+            WorkOrderInfoChip(
+                icon = Icons.Default.PrecisionManufacturing,
+                label = "Equipamento",
+                value = workOrder.getFullEquipment(),
+                modifier = Modifier.fillMaxWidth()
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // 2. Setor e Solicitante
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 WorkOrderInfoChip(
+                    icon = Icons.Default.Business,
+                    label = "Setor",
+                    value = workOrder.getFullSector(),
+                    modifier = Modifier.weight(1f)
+                )
+                WorkOrderInfoChip(
                     icon = Icons.Default.Person,
                     label = "Solicitante",
-                    value = extractedSolicitante?.ifBlank { "—" } ?: "—",
+                    value = workOrder.getFullRequester(),
                     modifier = Modifier.weight(1f)
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            // Botão Abrir ou Reativar
+            // Botão Abrir ordem de serviço (Laranja, largura total e em destaque)
+            val buttonColor = if (isPaused && onReactivate != null) SicoiSuccess else SicoiOrange
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(buttonColor)
+                    .border(1.dp, buttonColor, RoundedCornerShape(12.dp))
+                    .clickable { if (isPaused && onReactivate != null) onReactivate() else onClick() }
+                    .padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
-
-                val buttonColor = if (isPaused && onReactivate != null) SicoiSuccess else SicoiBlue
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(buttonColor)
-                        .border(1.dp, buttonColor, RoundedCornerShape(12.dp))
-                        .clickable { if (isPaused && onReactivate != null) onReactivate() else onClick() }
-                        .padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        if (isPaused && onReactivate != null) "Reativar O.S." else "Abrir Ordem de serviço", 
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.White, 
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
-                            fontSize = 14.sp,
-                            letterSpacing = 0.5.sp
-                        )
+                Text(
+                    if (isPaused && onReactivate != null) "Reativar ordem de serviço" else "Abrir ordem de serviço", 
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = Color.White, 
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                        fontSize = 15.sp,
+                        letterSpacing = 0.5.sp
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Icon(
-                        if (isPaused && onReactivate != null) Icons.Default.PlayArrow else Icons.Default.ArrowForward, 
-                        contentDescription = null, 
-                        tint = Color.White, 
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    if (isPaused && onReactivate != null) Icons.Default.PlayArrow else Icons.Default.ArrowForward, 
+                    contentDescription = null, 
+                    tint = Color.White, 
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }
@@ -804,7 +794,7 @@ private fun WorkOrderInfoRow(
         Text(
             value,
             style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, color = primaryColor),
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
     }
@@ -834,7 +824,7 @@ private fun WorkOrderInfoChip(
         ) {
             Icon(icon, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(16.dp))
         }
-        Column {
+        Column(modifier = Modifier.weight(1f, fill = false)) {
             Text(
                 label.uppercase(),
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = SicoiTextMuted, letterSpacing = 0.5.sp)
@@ -842,7 +832,7 @@ private fun WorkOrderInfoChip(
             Text(
                 value,
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, color = SicoiTextPrimary),
-                maxLines = 1,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
         }

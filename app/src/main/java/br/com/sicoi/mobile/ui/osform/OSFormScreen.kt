@@ -72,6 +72,7 @@ fun OSFormScreen(
     var servicePhotoBitmaps by remember { mutableStateOf<List<Bitmap>>(emptyList()) }
     var materialPhotoBitmaps by remember { mutableStateOf<List<Bitmap>>(emptyList()) }
     var activeAttachmentSection by remember { mutableStateOf("requester") }
+    var viewingImageUrl by remember { mutableStateOf<String?>(null) }
 
     // Estados para controle de exibição do histórico
     var isGridView by remember { mutableStateOf(false) }
@@ -524,13 +525,12 @@ fun OSFormScreen(
                         .fillMaxSize()
                         .padding(paddingValues)
                 ) {
-                    // Exibir abas tanto no modo solicitante quanto no modo técnico
+                    // ─── Abas ─────────────────────────────────────────────
                     val tabs = if (isRequesterMode) {
                         listOf("Dados do Solicitante", "Dados do Equipamento")
                     } else {
-                        listOf("Informações da O.S.", "Intervenções")
+                        listOf("Informações do Solicitante", "Execução do Técnico")
                     }
-                    
                     TabRow(
                         selectedTabIndex = selectedTabIndex,
                         containerColor = SicoiSurface,
@@ -616,10 +616,10 @@ fun OSFormScreen(
 
                                             // Setor
                                             EditableOSField(
-                                                label = "Setor *",
+                                                label = "Setor / Localização *",
                                                 value = viewModel.setorForm,
                                                 onValueChange = { viewModel.setorForm = it },
-                                                placeholder = "Ex: Produção, Manutenção",
+                                                placeholder = "Ex: Usinagem, Montagem, Estamparia, Linha 1",
                                                 icon = Icons.Default.Business,
                                                 isTab0 = true
                                             )
@@ -989,165 +989,296 @@ fun OSFormScreen(
                                 }
                             }
                         } else {
-                            // Modo técnico com abas
-                            when (selectedTabIndex) {
-                                // ══════════════════════════════════════════════
-                                // ABA 0: Informações da O.S. (Somente Leitura)
-                                // ══════════════════════════════════════════════
-                                0 -> {
-                                    Card(
-                                        shape = RoundedCornerShape(16.dp),
-                                        colors = CardDefaults.cardColors(containerColor = SicoiCard),
-                                        border = BorderStroke(1.dp, SicoiOrangeBorder)
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.padding(16.dp),
-                                            verticalArrangement = Arrangement.spacedBy(14.dp)
-                                        ) {
-                                            // Cabeçalho da seção
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                            ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(38.dp)
-                                                        .background(SicoiOrange.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Icon(Icons.Default.Info, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(20.dp))
-                                                }
-                                                Column {
-                                                    Text("Informações da O.S.", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
-                                                    Text("Dados registrados na abertura da ordem de serviço", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
-                                                }
-                                            }
-
-                                            HorizontalDivider(color = SicoiDivider)
-
-                                            // Solicitante
-                                            ReadOnlyOSField(
-                                                label = "Solicitante",
-                                                value = viewModel.solicitanteForm.ifBlank { "Não informado" },
-                                                icon = Icons.Default.Person,
-                                                isTab0 = true
-                                            )
-
-                                            // Setor
-                                            ReadOnlyOSField(
-                                                label = "Setor",
-                                                value = viewModel.setorForm.ifBlank { "Não informado" },
-                                                icon = Icons.Default.Business,
-                                                isTab0 = true
-                                            )
-
-                                            // Data de Abertura
-                                            ReadOnlyOSField(
-                                                label = "Data de Abertura",
-                                                value = viewModel.dateForm.ifBlank { "Não informado" },
-                                                icon = Icons.Default.DateRange,
-                                                isTab0 = true
-                                            )
-
-                                            // Equipamento
-                                            ReadOnlyOSField(
-                                                label = "Equipamento",
-                                                value = viewModel.equipamentoForm.ifBlank { "Não informado" },
-                                                icon = Icons.Default.Settings,
-                                                isTab0 = true
-                                            )
-
-                                            // Patrimônio
-                                            ReadOnlyOSField(
-                                                label = "Número do Patrimônio",
-                                                value = viewModel.patrimonioForm.ifBlank { "Não informado" },
-                                                icon = Icons.Default.Tag,
-                                                isTab0 = true
-                                            )
-
-                                            // Prioridade
-                                            ReadOnlyOSField(
-                                                label = "Prioridade",
-                                                value = viewModel.prioridadeForm,
-                                                icon = Icons.Default.Warning,
-                                                isTab0 = true
-                                            )
-
-                                            // Descrição do Problema
-                                            ReadOnlyOSField(
-                                                label = "Descrição do Problema",
-                                                value = viewModel.descricaoForm.ifBlank { "Não informado" },
-                                                icon = Icons.Default.Description,
-                                                isTab0 = true
-                                            )
-
-                                            Spacer(modifier = Modifier.height(6.dp))
-
-                                            // Imagens anexadas pelo solicitante
-                                            val attachments = viewModel.loadedPhotoAttachments
-                                            if (attachments.isNotEmpty()) {
-                                                Text(
-                                                    "Imagens Enviadas",
-                                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
-                                                    color = SicoiTextPrimary
-                                                )
-                                                Spacer(modifier = Modifier.height(8.dp))
-                                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                    items(attachments) { attachment ->
-                                                        AsyncImage(
-                                                            model = attachment.url,
-                                                            contentDescription = "Imagem do solicitante",
-                                                            contentScale = ContentScale.Crop,
-                                                            modifier = Modifier
-                                                                .size(140.dp)
-                                                                .clip(RoundedCornerShape(8.dp))
-                                                                .border(1.dp, SicoiDivider, RoundedCornerShape(8.dp))
-                                                                .clickable {
-                                                                    showImagesDialog = true
-                                                                }
-                                                        )
-                                                    }
-                                                }
                                             } else {
                                                 Text(
                                                     "Nenhuma imagem anexada pelo solicitante",
                                                     style = MaterialTheme.typography.bodyMedium,
                                                     color = SicoiTextMuted
                                                 )
+=======
+                            when (selectedTabIndex) {
+                                // ══════════════════════════════════════════════
+                                // ABA 0 (TÉCNICO): Informações do Solicitante
+                                // ══════════════════════════════════════════════
+                                0 -> {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                                    ) {
+                                        // 1. ÊNFASE MÁXIMA NA FRASE ESCRITA PELO SOLICITANTE
+                                        Card(
+                                            shape = RoundedCornerShape(16.dp),
+                                            colors = CardDefaults.cardColors(containerColor = SicoiCard),
+                                            border = BorderStroke(1.5.dp, SicoiOrange)
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(16.dp),
+                                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                                            ) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(38.dp)
+                                                            .background(SicoiOrange.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Icon(
+                                                            Icons.Default.ReportProblem,
+                                                            contentDescription = null,
+                                                            tint = SicoiOrange,
+                                                            modifier = Modifier.size(22.dp)
+                                                        )
+                                                    }
+                                                    Column {
+                                                        Text(
+                                                            "PROBLEMA RELATADO PELO SOLICITANTE",
+                                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                                fontWeight = FontWeight.ExtraBold,
+                                                                fontSize = 14.sp,
+                                                                letterSpacing = 0.5.sp
+                                                            ),
+                                                            color = SicoiOrange
+                                                        )
+                                                        Text("Relato de abertura do chamado", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
+                                                    }
+                                                }
+
+                                                HorizontalDivider(color = SicoiOrange.copy(alpha = 0.3f))
+
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clip(RoundedCornerShape(12.dp))
+                                                        .background(SicoiSurface)
+                                                        .border(1.dp, SicoiOrangeBorder.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                                                        .padding(14.dp)
+                                                ) {
+                                                    Text(
+                                                        text = viewModel.descricaoForm.ifBlank { "Nenhuma descrição detalhada informada pelo solicitante." },
+                                                        style = MaterialTheme.typography.bodyLarge.copy(
+                                                            fontSize = 16.sp,
+                                                            fontWeight = FontWeight.SemiBold,
+                                                            lineHeight = 22.sp
+                                                        ),
+                                                        color = SicoiTextPrimary
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        // 2. FOTOS E ANEXOS DO SOLICITANTE
+                                        val requesterPhotos = remember(viewModel.loadedPhotoAttachments, s.order) {
+                                            (viewModel.loadedPhotoAttachments.map { it.url } + s.order.getPhotoUrls())
+                                                .filter { it.isNotBlank() }
+                                                .distinct()
+                                        }
+
+                                        Card(
+                                            shape = RoundedCornerShape(16.dp),
+                                            colors = CardDefaults.cardColors(containerColor = SicoiCard),
+                                            border = BorderStroke(1.dp, SicoiBlue.copy(alpha = 0.4f))
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(16.dp),
+                                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                            ) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(38.dp)
+                                                            .background(SicoiBlue.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Icon(
+                                                            Icons.Default.PhotoLibrary,
+                                                            contentDescription = null,
+                                                            tint = SicoiBlue,
+                                                            modifier = Modifier.size(22.dp)
+                                                        )
+                                                    }
+                                                    Column {
+                                                        Text(
+                                                            "FOTOS DA OCORRÊNCIA",
+                                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                                fontWeight = FontWeight.Bold,
+                                                                fontSize = 14.sp,
+                                                                letterSpacing = 0.5.sp
+                                                            ),
+                                                            color = SicoiBlueLight
+                                                        )
+                                                        Text(
+                                                            if (requesterPhotos.isNotEmpty()) "${requesterPhotos.size} foto(s) anexada(s)" else "Sem fotos anexadas",
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = SicoiTextMuted
+                                                        )
+                                                    }
+                                                }
+
+                                                HorizontalDivider(color = SicoiDivider)
+
+                                                if (requesterPhotos.isNotEmpty()) {
+                                                    LazyRow(
+                                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    ) {
+                                                        items(requesterPhotos) { photoUrl ->
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .size(110.dp)
+                                                                    .clip(RoundedCornerShape(12.dp))
+                                                                    .border(1.5.dp, SicoiBlue.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                                                                    .clickable { viewingImageUrl = photoUrl }
+                                                            ) {
+                                                                AsyncImage(
+                                                                    model = photoUrl,
+                                                                    contentDescription = "Foto do Solicitante",
+                                                                    contentScale = ContentScale.Crop,
+                                                                    modifier = Modifier.fillMaxSize()
+                                                                )
+                                                                Box(
+                                                                    modifier = Modifier
+                                                                        .align(Alignment.BottomEnd)
+                                                                        .padding(4.dp)
+                                                                        .size(24.dp)
+                                                                        .background(Color.Black.copy(alpha = 0.65f), CircleShape),
+                                                                    contentAlignment = Alignment.Center
+                                                                ) {
+                                                                    Icon(
+                                                                        Icons.Default.ZoomIn,
+                                                                        contentDescription = "Ampliar",
+                                                                        tint = Color.White,
+                                                                        modifier = Modifier.size(16.dp)
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                    Text(
+                                                        "Toque em uma miniatura para abrir e ampliar a foto",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = SicoiTextMuted
+                                                    )
+                                                } else {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clip(RoundedCornerShape(10.dp))
+                                                            .background(SicoiSurface)
+                                                            .padding(14.dp),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Text(
+                                                            "Nenhuma foto foi anexada pelo solicitante nesta O.S.",
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            color = SicoiTextMuted,
+                                                            textAlign = TextAlign.Center
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        // 3. RESTANTE DAS INFORMAÇÕES DO SOLICITANTE / EQUIPAMENTO
+                                        Card(
+                                            shape = RoundedCornerShape(16.dp),
+                                            colors = CardDefaults.cardColors(containerColor = SicoiCard),
+                                            border = BorderStroke(1.dp, SicoiCardBorder)
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(16.dp),
+                                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                            ) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(38.dp)
+                                                            .background(SicoiSuccess.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Icon(
+                                                            Icons.Default.Info,
+                                                            contentDescription = null,
+                                                            tint = SicoiSuccess,
+                                                            modifier = Modifier.size(22.dp)
+                                                        )
+                                                    }
+                                                    Column {
+                                                        Text(
+                                                            "DADOS GERAIS DA SOLICITAÇÃO",
+                                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                                fontWeight = FontWeight.Bold,
+                                                                fontSize = 14.sp,
+                                                                letterSpacing = 0.5.sp
+                                                            ),
+                                                            color = SicoiTextPrimary
+                                                        )
+                                                        Text("Equipamento, setor e solicitante", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
+                                                    }
+                                                }
+
+                                                HorizontalDivider(color = SicoiDivider)
+
+                                                ReadOnlyOSField(
+                                                    label = "Equipamento",
+                                                    value = viewModel.equipamentoForm.ifBlank { "Não informado" },
+                                                    icon = Icons.Default.PrecisionManufacturing
+                                                )
+                                                ReadOnlyOSField(
+                                                    label = "Setor / Localização",
+                                                    value = viewModel.setorForm.ifBlank { "Não informado" },
+                                                    icon = Icons.Default.Business
+                                                )
+                                                ReadOnlyOSField(
+                                                    label = "Solicitante",
+                                                    value = viewModel.solicitanteForm.ifBlank { "Não informado" },
+                                                    icon = Icons.Default.Person
+                                                )
+
+                                                if (viewModel.patrimonioForm.isNotBlank()) {
+                                                    ReadOnlyOSField(
+                                                        label = "Número do Patrimônio (Tag)",
+                                                        value = viewModel.patrimonioForm,
+                                                        icon = Icons.Default.ConfirmationNumber
+                                                    )
+                                                }
+
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                    Box(modifier = Modifier.weight(1f)) {
+                                                        ReadOnlyOSField(
+                                                            label = "Prioridade",
+                                                            value = viewModel.prioridadeForm,
+                                                            icon = Icons.Default.PriorityHigh
+                                                        )
+                                                    }
+                                                    Box(modifier = Modifier.weight(1f)) {
+                                                        ReadOnlyOSField(
+                                                            label = "Data de Abertura",
+                                                            value = viewModel.dateForm,
+                                                            icon = Icons.Default.DateRange
+                                                        )
+                                                    }
+                                                }
                                             }
                                         }
                                     }
                                 }
 
                                 // ══════════════════════════════════════════════
-                                // ABA 1: Intervenções
+                                // ABA 1 (TÉCNICO): Execução do Técnico
                                 // ══════════════════════════════════════════════
                                 1 -> {
-                                    // ── Subtítulo "Intervenções" ──────────────────────
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(4.dp)
-                                                .background(SicoiOrange, shape = RoundedCornerShape(2.dp))
-                                        )
-                                        Text(
-                                            "Intervenções",
-                                            style = MaterialTheme.typography.titleMedium.copy(
-                                                fontWeight = FontWeight.ExtraBold,
-                                                fontSize = 17.sp
-                                            ),
-                                            color = SicoiOrange
-                                        )
-                                        Spacer(modifier = Modifier.weight(1f))
-                                        HorizontalDivider(
-                                            modifier = Modifier.weight(1f),
-                                            color = SicoiOrange.copy(alpha = 0.3f)
-                                        )
-                                    }
                                     TechnicianExecutionSection(
                                         viewModel = viewModel,
                                         serviceBitmaps = servicePhotoBitmaps,
@@ -1262,7 +1393,50 @@ fun OSFormScreen(
                 }
             }
 
+            is OSFormUiState.SavedOffline, is OSFormUiState.SavedOnline -> {
+                // Redirecionamento e Toast tratados no LaunchedEffect
+            }
+
             else -> {}
+        }
+
+        if (viewingImageUrl != null) {
+            androidx.compose.ui.window.Dialog(
+                onDismissRequest = { viewingImageUrl = null },
+                properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color.Black.copy(alpha = 0.95f)
+                ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            horizontalArrangement = Arrangement.Start
+                        ) {
+                            IconButton(
+                                onClick = { viewingImageUrl = null },
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.White.copy(alpha = 0.15f))
+                            ) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = Color.White)
+                            }
+                        }
+                        Box(
+                            modifier = Modifier.fillMaxSize().padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AsyncImage(
+                                model = viewingImageUrl,
+                                contentDescription = "Foto da OS",
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp))
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
     

@@ -55,6 +55,7 @@ class OSFormViewModel @Inject constructor(
 
     // Campos do formulário do solicitante
     var solicitanteForm      by androidx.compose.runtime.mutableStateOf("")
+    var setorForm            by androidx.compose.runtime.mutableStateOf("")
     var equipamentoForm      by androidx.compose.runtime.mutableStateOf("")
     var setorForm            by androidx.compose.runtime.mutableStateOf("")
     var patrimonioForm       by androidx.compose.runtime.mutableStateOf("")
@@ -104,22 +105,27 @@ class OSFormViewModel @Inject constructor(
         val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
         val nowTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
 
-        // Campos comuns (solicitante)
-        solicitanteForm = order.solicitante ?: ""
-        equipamentoForm = order.equipamento ?: ""
-        setorForm = order.setor ?: ""
+        // Campos comuns (solicitante) com métodos resilientes
+        solicitanteForm = order.getFullRequester()
+        setorForm = order.getFullSector()
+        equipamentoForm = order.getFullEquipment()
         patrimonioForm = ""
         prioridadeForm = order.prioridade ?: "Normal"
         descricaoForm = order.descricaoProblema ?: ""
         dateForm = order.dataAbertura ?: today
         timeForm = nowTime
 
+        // Extrai fotos da ordem
+        val extractedPhotos = order.getPhotoUrls().map { url ->
+            AttachedFile(name = url.substringAfterLast("/"), url = url, path = url.substringAfterLast("/"))
+        }
+
         // Campos do técnico
         externalService = "nao"
         externalJustification = ""
         loadedExternalAttachments = emptyList()
         loadedPrintedOsAttachments = emptyList()
-        loadedPhotoAttachments = emptyList()
+        loadedPhotoAttachments = extractedPhotos
         materialsList.clear()
         pauseState = "idle"
         pauseReason = ""
@@ -129,31 +135,55 @@ class OSFormViewModel @Inject constructor(
         finalHour = nowTime
         vistoExecutante = order.tecnicoResponsavel ?: defaultTechName
 
-        // Parse do JSON da solucao_aplicada
+        // Parse resiliente do JSON da solucao_aplicada
         order.solucaoAplicada?.let { sol ->
             if (sol.startsWith("[RQ-11-DIGITAL]:")) {
                 try {
                     val jsonStr = sol.removePrefix("[RQ-11-DIGITAL]:").trim()
-                    val payload = Json.decodeFromString<OSExecutionPayload>(jsonStr)
-                    
-                    solicitanteForm = payload.responsible.ifBlank { order.solicitante ?: "" }
-                    equipamentoForm = payload.equipment.ifBlank { order.equipamento ?: "" }
-                    patrimonioForm = payload.equipmentNo
-                    prioridadeForm = when (payload.priority) {
-                        "emergency" -> "Emergência"
-                        "urgent_2days" -> "Urgente"
-                        else -> "Normal"
+                    val jsonParser = kotlinx.serialization.json.Json {
+                        ignoreUnknownKeys = true
+                        isLenient = true
+                        coerceInputValues = true
                     }
-                    descricaoForm = payload.descriptionToExecute.ifBlank { order.descricaoProblema ?: "" }
-                    dateForm = payload.date.ifBlank { order.dataAbertura ?: today }
-                    timeForm = payload.time.ifBlank { nowTime }
+                    val payload = jsonParser.decodeFromString<OSExecutionPayload>(jsonStr)
+                    
+                    val req = payload.responsible.ifBlank { payload.solicitante.ifBlank { payload.requester } }
+                    if (req.isNotBlank()) {
+                        solicitanteForm = req
+                    }
+                    val sec = payload.sector.ifBlank { payload.setor }
+                    if (sec.isNotBlank()) {
+                        setorForm = sec
+                    }
+                    val eq = payload.equipment.ifBlank { payload.equipamento }
+                    if (eq.isNotBlank()) {
+                        equipamentoForm = eq
+                    }
+                    if (payload.equipmentNo.isNotBlank()) {
+                        patrimonioForm = payload.equipmentNo
+                    }
+                    if (payload.priority.isNotBlank()) {
+                        prioridadeForm = when (payload.priority.lowercase()) {
+                            "emergency", "emergência", "emergencia" -> "Emergência"
+                            "urgent_2days", "urgente" -> "Urgente"
+                            else -> "Normal"
+                        }
+                    }
+                    if (payload.descriptionToExecute.isNotBlank()) {
+                        descricaoForm = payload.descriptionToExecute
+                    }
+                    if (payload.date.isNotBlank()) dateForm = payload.date
+                    if (payload.time.isNotBlank()) timeForm = payload.time
                     
                     externalService = payload.externalService
                     externalJustification = payload.externalJustification
                     
                     loadedExternalAttachments = payload.externalAttachments
                     loadedPrintedOsAttachments = payload.printedOsAttachments
-                    loadedPhotoAttachments = payload.photoAttachments
+                    
+                    // Combina anexos do payload com as fotos extraídas por URLs
+                    val combinedPhotos = (payload.photoAttachments + extractedPhotos).filter { it.url.isNotBlank() }.distinctBy { it.url }
+                    loadedPhotoAttachments = combinedPhotos
                     
                     materialsList.clear()
                     materialsList.addAll(payload.materials)
@@ -305,11 +335,16 @@ class OSFormViewModel @Inject constructor(
                     "time": "$currentTime",
                     "responsible": "$solicitante",
                     "solicitante": "$solicitante",
+                    "requester": "$solicitante",
+                    "sector": "$setor",
+                    "setor": "$setor",
                     "equipment": "$equipamento",
+                    "equipamento": "$equipamento",
                     "equipment_no": "$patrimonioForm",
                     "priority": "${prioridade.lowercase()}",
                     "description_to_execute": "$descricaoProblema",
-                    "assigned_technician": "$finalTechnician"
+                    "assigned_technician": "$finalTechnician",
+                    "origem": "App mobile"
                 }
             """.trimIndent()
 

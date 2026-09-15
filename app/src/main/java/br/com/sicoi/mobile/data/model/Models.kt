@@ -49,7 +49,85 @@ data class WorkOrder(
     @SerialName("assinatura_url") val assinaturaUrl: String? = null,
     @SerialName("foto_antes_url") val fotoAntesUrl: String? = null,
     @SerialName("foto_depois_url") val fotoDepoisUrl: String? = null
-)
+) {
+    fun getFullEquipment(): String {
+        if (!equipamento.isNullOrBlank() && equipamento != "Geral") return equipamento
+        val fromPayload = parsePayloadField { it.equipment }
+        return if (!fromPayload.isNullOrBlank()) fromPayload else (equipamento ?: "Não informado")
+    }
+
+    fun getFullSector(): String {
+        if (!setor.isNullOrBlank() && setor != "N/A") return setor
+        val fromPayload = parsePayloadField { it.sector }
+        return if (!fromPayload.isNullOrBlank()) fromPayload else (setor ?: "Não informado")
+    }
+
+    fun getFullRequester(): String {
+        if (!solicitante.isNullOrBlank()) return solicitante
+        val fromPayload = parsePayloadField { it.responsible }
+        return if (!fromPayload.isNullOrBlank()) fromPayload else (solicitante ?: "Não informado")
+    }
+
+    fun getPhotoUrls(): List<String> {
+        val urls = mutableListOf<String>()
+        fotoAntesUrl?.takeIf { it.isNotBlank() }?.let { urls.add(it) }
+        fotoDepoisUrl?.takeIf { it.isNotBlank() }?.let { urls.add(it) }
+        
+        solucaoAplicada?.let { sol ->
+            if (sol.startsWith("[RQ-11-DIGITAL]:")) {
+                try {
+                    val jsonStr = sol.removePrefix("[RQ-11-DIGITAL]:").trim()
+                    val jsonParser = kotlinx.serialization.json.Json { 
+                        ignoreUnknownKeys = true 
+                        isLenient = true
+                        coerceInputValues = true
+                    }
+                    val element = jsonParser.parseToJsonElement(jsonStr) as? kotlinx.serialization.json.JsonObject
+                    val photoArray = element?.get("photo_attachments") as? kotlinx.serialization.json.JsonArray
+                    photoArray?.forEach { item ->
+                        when (item) {
+                            is kotlinx.serialization.json.JsonObject -> {
+                                val url = item["url"]?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+                                if (!url.isNullOrBlank() && !urls.contains(url)) {
+                                    urls.add(url)
+                                }
+                            }
+                            is kotlinx.serialization.json.JsonPrimitive -> {
+                                val url = item.content
+                                if (url.isNotBlank() && !urls.contains(url)) {
+                                    urls.add(url)
+                                }
+                            }
+                            else -> {}
+                        }
+                    }
+                } catch (e: Exception) {
+                    // ignore
+                }
+            }
+        }
+        return urls
+    }
+
+    private fun parsePayloadField(extractor: (OSExecutionPayload) -> String): String? {
+        val sol = solucaoAplicada ?: return null
+        if (sol.startsWith("[RQ-11-DIGITAL]:")) {
+            return try {
+                val jsonStr = sol.removePrefix("[RQ-11-DIGITAL]:").trim()
+                val jsonParser = kotlinx.serialization.json.Json { 
+                    ignoreUnknownKeys = true 
+                    isLenient = true 
+                    coerceInputValues = true 
+                }
+                val payload = jsonParser.decodeFromString<OSExecutionPayload>(jsonStr)
+                extractor(payload).takeIf { it.isNotBlank() }
+            } catch (e: Exception) {
+                null
+            }
+        }
+        return null
+    }
+}
 
 /** Estado de aprovação do usuário */
 enum class ApprovalStatus(val value: String) {
@@ -82,8 +160,12 @@ data class OSExecutionPayload(
     val date: String = "",
     val time: String = "",
     val sector: String = "",
+    val setor: String = "",
     val responsible: String = "",
+    val solicitante: String = "",
+    val requester: String = "",
     val equipment: String = "",
+    val equipamento: String = "",
     @SerialName("equipment_no") val equipmentNo: String = "",
     val priority: String = "",
     @SerialName("description_to_execute") val descriptionToExecute: String = "",
@@ -104,6 +186,7 @@ data class OSExecutionPayload(
     @SerialName("description_executed") val descriptionExecuted: String = "",
     @SerialName("final_date") val finalDate: String = "",
     @SerialName("final_hour") val finalHour: String = "",
-    @SerialName("visto_executante") val vistoExecutante: String = ""
+    @SerialName("visto_executante") val vistoExecutante: String = "",
+    val origem: String = "",
+    @SerialName("maint_types") val maintTypes: List<String> = emptyList()
 )
-
