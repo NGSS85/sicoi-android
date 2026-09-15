@@ -573,79 +573,115 @@ fun OSFormScreen(
                                 // ABA 0: Dados do Solicitante
                                 // ══════════════════════════════════════════════
                                 0 -> {
-                                    Card(
-                                        shape = RoundedCornerShape(16.dp),
-                                        colors = CardDefaults.cardColors(containerColor = SicoiCard),
-                                        border = BorderStroke(1.dp, SicoiSuccess.copy(alpha = 0.3f))
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalArrangement = Arrangement.spacedBy(16.dp)
                                     ) {
-                                        Column(
-                                            modifier = Modifier.padding(16.dp),
-                                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                                        Card(
+                                            shape = RoundedCornerShape(16.dp),
+                                            colors = CardDefaults.cardColors(containerColor = SicoiCard),
+                                            border = BorderStroke(1.dp, SicoiSuccess.copy(alpha = 0.35f))
                                         ) {
-                                            // Cabeçalho da seção
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                                modifier = Modifier.padding(bottom = 4.dp)
+                                            Column(
+                                                modifier = Modifier.padding(20.dp),
+                                                verticalArrangement = Arrangement.spacedBy(18.dp)
                                             ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(38.dp)
-                                                        .background(SicoiSuccess.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
-                                                    contentAlignment = Alignment.Center
+                                                // Cabeçalho da seção
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                                    modifier = Modifier.padding(bottom = 2.dp)
                                                 ) {
-                                                    Icon(Icons.Default.Person, contentDescription = null, tint = SicoiSuccess, modifier = Modifier.size(20.dp))
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(42.dp)
+                                                            .background(SicoiSuccess.copy(alpha = 0.15f), RoundedCornerShape(12.dp)),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Icon(Icons.Default.Person, contentDescription = null, tint = SicoiSuccess, modifier = Modifier.size(22.dp))
+                                                    }
+                                                    Column {
+                                                        Text(
+                                                            "Dados do Solicitante", 
+                                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                                fontSize = 19.sp,
+                                                                fontWeight = FontWeight.Bold
+                                                            ), 
+                                                            color = SicoiTextPrimary
+                                                        )
+                                                        Text("Quem está abrindo a ordem de serviço", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
+                                                    }
                                                 }
-                                                Column {
-                                                    Text(
-                                                        "Dados do Solicitante", 
-                                                        style = MaterialTheme.typography.titleMedium.copy(
-                                                            fontSize = 19.sp,
-                                                            fontWeight = FontWeight.Bold
-                                                        ), 
-                                                        color = SicoiTextPrimary
-                                                    )
-                                                    Text("Quem está abrindo a ordem de serviço", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
+
+                                                HorizontalDivider(color = SicoiDivider)
+
+                                                // Solicitante
+                                                EditableOSField(
+                                                    label = "Nome do Solicitante *",
+                                                    value = viewModel.solicitanteForm,
+                                                    onValueChange = { viewModel.solicitanteForm = it },
+                                                    placeholder = "Ex: João Silva",
+                                                    icon = Icons.Default.Person,
+                                                    isTab0 = true
+                                                )
+
+                                                // Setor
+                                                EditableOSField(
+                                                    label = "Setor / Localização *",
+                                                    value = viewModel.setorForm,
+                                                    onValueChange = { viewModel.setorForm = it },
+                                                    placeholder = "Ex: Usinagem, Montagem, Linha 1",
+                                                    icon = Icons.Default.Business,
+                                                    isTab0 = true
+                                                )
+
+                                                // Data e Hora lado a lado para melhor distribuição
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                                ) {
+                                                    Box(modifier = Modifier.weight(1f)) {
+                                                        ReadOnlyOSField(
+                                                            label = "Data de Abertura",
+                                                            value = viewModel.dateForm,
+                                                            icon = Icons.Default.DateRange,
+                                                            isTab0 = true
+                                                        )
+                                                    }
+                                                    Box(modifier = Modifier.weight(1f)) {
+                                                        ReadOnlyOSField(
+                                                            label = "Hora",
+                                                            value = viewModel.timeForm,
+                                                            icon = Icons.Default.Schedule,
+                                                            isTab0 = true
+                                                        )
+                                                    }
                                                 }
                                             }
+                                        }
 
-                                            HorizontalDivider(color = SicoiDivider)
-
-                                            // Solicitante
-                                            EditableOSField(
-                                                label = "Nome do Solicitante *",
-                                                value = viewModel.solicitanteForm,
-                                                onValueChange = { viewModel.solicitanteForm = it },
-                                                placeholder = "Ex: João Silva",
-                                                icon = Icons.Default.Person,
-                                                isTab0 = true
+                                        // Botão para avançar para a próxima aba
+                                        Button(
+                                            onClick = { selectedTabIndex = 1 },
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(54.dp),
+                                            shape = RoundedCornerShape(14.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = SicoiOrange,
+                                                contentColor = Color.White
+                                            ),
+                                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp)
+                                        ) {
+                                            Text(
+                                                "Avançar para Dados do Equipamento",
+                                                style = MaterialTheme.typography.titleSmall.copy(
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    fontSize = 15.sp
+                                                )
                                             )
-
-                                            // Setor
-                                            EditableOSField(
-                                                label = "Setor / Localização *",
-                                                value = viewModel.setorForm,
-                                                onValueChange = { viewModel.setorForm = it },
-                                                placeholder = "Ex: Usinagem, Montagem, Estamparia, Linha 1",
-                                                icon = Icons.Default.Business,
-                                                isTab0 = true
-                                            )
-
-                                            // Data de Abertura
-                                            ReadOnlyOSField(
-                                                label = "Data de Abertura (automático)",
-                                                value = viewModel.dateForm,
-                                                icon = Icons.Default.DateRange,
-                                                isTab0 = true
-                                            )
-
-                                            // Hora
-                                            ReadOnlyOSField(
-                                                label = "Hora (automático)",
-                                                value = viewModel.timeForm,
-                                                icon = Icons.Default.Schedule,
-                                                isTab0 = true
-                                            )
+                                            Spacer(modifier = Modifier.width(10.dp))
+                                            Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(20.dp))
                                         }
                                     }
                                 }
@@ -1321,37 +1357,37 @@ fun OSFormScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(4.dp))
-
                         // ─── Botões de Ação ───────────────────────────────────
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Botão Salvar Formulário (Caixa branca com texto em laranja)
-                            Button(
-                                onClick = { showConfirmDialog = true },
-                                modifier = Modifier.weight(1f).height(54.dp),
-                                shape = RoundedCornerShape(14.dp),
-                                border = BorderStroke(1.5.dp, SicoiOrange),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.White,
-                                    contentColor = SicoiOrange
-                                ),
-                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                        // No modo Solicitante, exibe o botão Salvar apenas na Aba 1 (Dados do Equipamento)
+                        if (!isRequesterMode || selectedTabIndex == 1) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.Save, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(20.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    "Salvar Formulário",
-                                    color = SicoiOrange,
-                                    style = MaterialTheme.typography.titleSmall.copy(
-                                        fontWeight = FontWeight.ExtraBold,
-                                        fontSize = 15.5.sp
+                                // Botão Salvar Formulário (Caixa branca com texto em Preto)
+                                Button(
+                                    onClick = { showConfirmDialog = true },
+                                    modifier = Modifier.weight(1f).height(54.dp),
+                                    shape = RoundedCornerShape(14.dp),
+                                    border = BorderStroke(1.5.dp, SicoiOrange),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color.White,
+                                        contentColor = Color.Black
+                                    ),
+                                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                                ) {
+                                    Icon(Icons.Default.Save, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(20.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "Salvar Formulário",
+                                        color = Color.Black,
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            fontWeight = FontWeight.ExtraBold,
+                                            fontSize = 15.5.sp
+                                        )
                                     )
-                                )
-                            }
+                                }
 
                             // Botão de três pontos (⋮) — Editar / Excluir
                             Box {
@@ -1399,6 +1435,7 @@ fun OSFormScreen(
                                 }
                             }
                         }
+                    }
 
                         Spacer(modifier = Modifier.height(20.dp))
                     }
