@@ -1016,16 +1016,17 @@ fun OSFormScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalArrangement = Arrangement.spacedBy(14.dp)
                                     ) {
-                                        // 1. ÊNFASE MÁXIMA NA FRASE ESCRITA PELO SOLICITANTE
+                                        // 1. MENSAGEM DO SOLICITANTE (CARD MODERNO E DESTACADO)
                                         Card(
-                                            shape = RoundedCornerShape(16.dp),
+                                            shape = RoundedCornerShape(18.dp),
                                             colors = CardDefaults.cardColors(containerColor = SicoiCard),
-                                            border = BorderStroke(1.5.dp, SicoiOrange)
+                                            border = BorderStroke(1.5.dp, SicoiOrange.copy(alpha = 0.8f))
                                         ) {
                                             Column(
-                                                modifier = Modifier.padding(16.dp),
-                                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                                                modifier = Modifier.padding(18.dp),
+                                                verticalArrangement = Arrangement.spacedBy(12.dp)
                                             ) {
+                                                // Cabeçalho Centralizado com Ícone e Título Maior
                                                 Row(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     verticalAlignment = Alignment.CenterVertically,
@@ -1033,54 +1034,47 @@ fun OSFormScreen(
                                                 ) {
                                                     Box(
                                                         modifier = Modifier
-                                                            .size(38.dp)
-                                                            .background(SicoiOrange.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                                                            .size(40.dp)
+                                                            .background(SicoiOrange.copy(alpha = 0.18f), CircleShape),
                                                         contentAlignment = Alignment.Center
                                                     ) {
                                                         Icon(
                                                             Icons.Default.ReportProblem,
                                                             contentDescription = null,
                                                             tint = SicoiOrange,
-                                                            modifier = Modifier.size(22.dp)
+                                                            modifier = Modifier.size(24.dp)
                                                         )
                                                     }
-                                                    Spacer(modifier = Modifier.width(10.dp))
-                                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                        Text(
-                                                            "Mensagem do Solicitante",
-                                                            style = MaterialTheme.typography.titleMedium.copy(
-                                                                fontWeight = FontWeight.ExtraBold,
-                                                                fontSize = 15.sp,
-                                                                letterSpacing = 0.5.sp
-                                                            ),
-                                                            color = SicoiOrange,
-                                                            textAlign = TextAlign.Center
-                                                        )
-                                                        Text(
-                                                            "Relato de abertura do chamado",
-                                                            style = MaterialTheme.typography.bodySmall,
-                                                            color = SicoiTextMuted,
-                                                            textAlign = TextAlign.Center
-                                                        )
-                                                    }
+                                                    Spacer(modifier = Modifier.width(12.dp))
+                                                    Text(
+                                                        "Mensagem do Solicitante",
+                                                        style = MaterialTheme.typography.titleLarge.copy(
+                                                            fontWeight = FontWeight.ExtraBold,
+                                                            fontSize = 18.sp,
+                                                            letterSpacing = 0.3.sp
+                                                        ),
+                                                        color = SicoiOrange,
+                                                        textAlign = TextAlign.Center
+                                                    )
                                                 }
 
-                                                HorizontalDivider(color = SicoiOrange.copy(alpha = 0.3f))
+                                                HorizontalDivider(color = SicoiOrange.copy(alpha = 0.25f))
 
+                                                // Caixa com o conteúdo da mensagem do solicitante
                                                 Box(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
-                                                        .clip(RoundedCornerShape(12.dp))
+                                                        .clip(RoundedCornerShape(14.dp))
                                                         .background(SicoiSurface)
-                                                        .border(1.dp, SicoiOrangeBorder.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
-                                                        .padding(14.dp)
+                                                        .border(1.dp, SicoiOrangeBorder.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
+                                                        .padding(16.dp)
                                                 ) {
                                                     Text(
                                                         text = viewModel.descricaoForm.ifBlank { "Nenhuma descrição detalhada informada pelo solicitante." },
                                                         style = MaterialTheme.typography.bodyLarge.copy(
                                                             fontSize = 16.sp,
                                                             fontWeight = FontWeight.SemiBold,
-                                                            lineHeight = 22.sp
+                                                            lineHeight = 23.sp
                                                         ),
                                                         color = SicoiTextPrimary
                                                     )
@@ -1088,7 +1082,7 @@ fun OSFormScreen(
                                             }
                                         }
 
-                                        // 2. FOTOS E ANEXOS DO SOLICITANTE -> IMAGENS DA OCORRÊNCIA
+                                        // 2. IMAGENS DA OCORRÊNCIA (CARD MODERNO E DESTACADO)
                                         val requesterPhotos = remember(viewModel.loadedPhotoAttachments, s.order) {
                                             (viewModel.loadedPhotoAttachments.map { it.url } + s.order.getPhotoUrls())
                                                 .filter { it.isNotBlank() }
@@ -1096,14 +1090,15 @@ fun OSFormScreen(
                                         }
 
                                         Card(
-                                            shape = RoundedCornerShape(16.dp),
+                                            shape = RoundedCornerShape(18.dp),
                                             colors = CardDefaults.cardColors(containerColor = SicoiCard),
-                                            border = BorderStroke(1.dp, SicoiBlue.copy(alpha = 0.4f))
+                                            border = BorderStroke(1.5.dp, SicoiBlue.copy(alpha = 0.6f))
                                         ) {
                                             Column(
-                                                modifier = Modifier.padding(16.dp),
+                                                modifier = Modifier.padding(18.dp),
                                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                                             ) {
+                                                // Cabeçalho Centralizado com Ícone e Título Maior
                                                 Row(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     verticalAlignment = Alignment.CenterVertically,
@@ -1111,42 +1106,35 @@ fun OSFormScreen(
                                                 ) {
                                                     Box(
                                                         modifier = Modifier
-                                                            .size(38.dp)
-                                                            .background(SicoiBlue.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                                                            .size(40.dp)
+                                                            .background(SicoiBlue.copy(alpha = 0.18f), CircleShape),
                                                         contentAlignment = Alignment.Center
                                                     ) {
                                                         Icon(
                                                             Icons.Default.PhotoLibrary,
                                                             contentDescription = null,
                                                             tint = SicoiBlue,
-                                                            modifier = Modifier.size(22.dp)
+                                                            modifier = Modifier.size(24.dp)
                                                         )
                                                     }
-                                                    Spacer(modifier = Modifier.width(10.dp))
-                                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                        Text(
-                                                            "Imagens da Ocorrência",
-                                                            style = MaterialTheme.typography.titleMedium.copy(
-                                                                fontWeight = FontWeight.Bold,
-                                                                fontSize = 15.sp,
-                                                                letterSpacing = 0.5.sp
-                                                            ),
-                                                            color = SicoiBlueLight,
-                                                            textAlign = TextAlign.Center
-                                                        )
-                                                        Text(
-                                                            if (requesterPhotos.isNotEmpty()) "${requesterPhotos.size} imagem(ns) anexada(s)" else "Sem imagens anexadas",
-                                                            style = MaterialTheme.typography.bodySmall,
-                                                            color = SicoiTextMuted,
-                                                            textAlign = TextAlign.Center
-                                                        )
-                                                    }
+                                                    Spacer(modifier = Modifier.width(12.dp))
+                                                    Text(
+                                                        "Imagens da Ocorrência",
+                                                        style = MaterialTheme.typography.titleLarge.copy(
+                                                            fontWeight = FontWeight.ExtraBold,
+                                                            fontSize = 18.sp,
+                                                            letterSpacing = 0.3.sp
+                                                        ),
+                                                        color = SicoiBlueLight,
+                                                        textAlign = TextAlign.Center
+                                                    )
                                                 }
 
-                                                HorizontalDivider(color = SicoiDivider)
+                                                HorizontalDivider(color = SicoiBlue.copy(alpha = 0.25f))
 
                                                 if (requesterPhotos.isNotEmpty()) {
                                                     if (requesterPhotos.size == 1) {
+                                                        // Foto única centralizada com visual moderno
                                                         val photoUrl = requesterPhotos.first()
                                                         Box(
                                                             modifier = Modifier
@@ -1156,9 +1144,10 @@ fun OSFormScreen(
                                                         ) {
                                                             Box(
                                                                 modifier = Modifier
-                                                                    .size(130.dp)
-                                                                    .clip(RoundedCornerShape(14.dp))
-                                                                    .border(1.5.dp, SicoiBlue.copy(alpha = 0.6f), RoundedCornerShape(14.dp))
+                                                                    .size(150.dp)
+                                                                    .clip(RoundedCornerShape(16.dp))
+                                                                    .background(SicoiSurface)
+                                                                    .border(2.dp, SicoiBlue.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
                                                                     .clickable { viewingImageUrl = photoUrl }
                                                             ) {
                                                                 AsyncImage(
@@ -1170,31 +1159,33 @@ fun OSFormScreen(
                                                                 Box(
                                                                     modifier = Modifier
                                                                         .align(Alignment.BottomEnd)
-                                                                        .padding(4.dp)
-                                                                        .size(24.dp)
-                                                                        .background(Color.Black.copy(alpha = 0.65f), CircleShape),
+                                                                        .padding(8.dp)
+                                                                        .size(28.dp)
+                                                                        .background(Color.Black.copy(alpha = 0.7f), CircleShape),
                                                                     contentAlignment = Alignment.Center
                                                                 ) {
                                                                     Icon(
                                                                         Icons.Default.ZoomIn,
                                                                         contentDescription = "Ampliar",
                                                                         tint = Color.White,
-                                                                        modifier = Modifier.size(16.dp)
+                                                                        modifier = Modifier.size(18.dp)
                                                                     )
                                                                 }
                                                             }
                                                         }
                                                     } else {
+                                                        // Múltiplas fotos em carrossel horizontal
                                                         LazyRow(
-                                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                                            horizontalArrangement = Arrangement.spacedBy(14.dp),
                                                             modifier = Modifier.fillMaxWidth()
                                                         ) {
                                                             items(requesterPhotos) { photoUrl ->
                                                                 Box(
                                                                     modifier = Modifier
-                                                                        .size(110.dp)
-                                                                        .clip(RoundedCornerShape(12.dp))
-                                                                        .border(1.5.dp, SicoiBlue.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                                                                        .size(120.dp)
+                                                                        .clip(RoundedCornerShape(14.dp))
+                                                                        .background(SicoiSurface)
+                                                                        .border(1.5.dp, SicoiBlue.copy(alpha = 0.6f), RoundedCornerShape(14.dp))
                                                                         .clickable { viewingImageUrl = photoUrl }
                                                                 ) {
                                                                     AsyncImage(
@@ -1206,9 +1197,9 @@ fun OSFormScreen(
                                                                     Box(
                                                                         modifier = Modifier
                                                                             .align(Alignment.BottomEnd)
-                                                                            .padding(4.dp)
+                                                                            .padding(6.dp)
                                                                             .size(24.dp)
-                                                                        .background(Color.Black.copy(alpha = 0.65f), CircleShape),
+                                                                            .background(Color.Black.copy(alpha = 0.7f), CircleShape),
                                                                         contentAlignment = Alignment.Center
                                                                     ) {
                                                                         Icon(
@@ -1224,22 +1215,32 @@ fun OSFormScreen(
                                                     }
                                                     Text(
                                                         "Toque na miniatura para abrir e ampliar a imagem",
-                                                        style = MaterialTheme.typography.labelSmall,
+                                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                                                         color = SicoiTextMuted,
                                                         textAlign = TextAlign.Center,
                                                         modifier = Modifier.fillMaxWidth()
                                                     )
                                                 } else {
-                                                    Box(
+                                                    // Estado vazio refinado
+                                                    Row(
                                                         modifier = Modifier
                                                             .fillMaxWidth()
-                                                            .clip(RoundedCornerShape(10.dp))
+                                                            .clip(RoundedCornerShape(12.dp))
                                                             .background(SicoiSurface)
+                                                            .border(1.dp, SicoiDivider.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
                                                             .padding(14.dp),
-                                                        contentAlignment = Alignment.Center
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.Center
                                                     ) {
+                                                        Icon(
+                                                            Icons.Default.ImageNotSupported,
+                                                            contentDescription = null,
+                                                            tint = SicoiTextMuted,
+                                                            modifier = Modifier.size(20.dp)
+                                                        )
+                                                        Spacer(modifier = Modifier.width(8.dp))
                                                         Text(
-                                                            "Nenhuma imagem foi anexada pelo solicitante nesta O.S.",
+                                                            "Nenhuma imagem anexada nesta O.S.",
                                                             style = MaterialTheme.typography.bodyMedium,
                                                             color = SicoiTextMuted,
                                                             textAlign = TextAlign.Center
