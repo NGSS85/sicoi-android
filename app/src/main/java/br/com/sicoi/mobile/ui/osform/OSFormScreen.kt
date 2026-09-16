@@ -67,12 +67,12 @@ fun OSFormScreen(
     var showImagesDialog by remember { mutableStateOf(false) }
     var afterBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
-    // Fotos dos solicitante (lista de bitmaps)
     var photoBitmaps by remember { mutableStateOf<List<Bitmap>>(emptyList()) }
     var servicePhotoBitmaps by remember { mutableStateOf<List<Bitmap>>(emptyList()) }
     var materialPhotoBitmaps by remember { mutableStateOf<List<Bitmap>>(emptyList()) }
     var activeAttachmentSection by remember { mutableStateOf("requester") }
     var viewingImageUrl by remember { mutableStateOf<String?>(null) }
+    var viewingBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
     val expandedCardIds = remember { mutableStateMapOf<String, Boolean>() }
 
@@ -1353,6 +1353,8 @@ fun OSFormScreen(
                                         onServiceBitmapsChange = { servicePhotoBitmaps = it },
                                         materialBitmaps = materialPhotoBitmaps,
                                         onMaterialBitmapsChange = { materialPhotoBitmaps = it },
+                                        onViewImage = { viewingImageUrl = it },
+                                        onViewBitmap = { viewingBitmap = it },
                                         onRequestAttach = { section ->
                                             if (section == "service") {
                                                 servicePhotoPickerLauncher.launch("image/*")
@@ -1481,9 +1483,12 @@ fun OSFormScreen(
             else -> {}
         }
 
-        if (viewingImageUrl != null) {
+        if (viewingImageUrl != null || viewingBitmap != null) {
             androidx.compose.ui.window.Dialog(
-                onDismissRequest = { viewingImageUrl = null },
+                onDismissRequest = {
+                    viewingImageUrl = null
+                    viewingBitmap = null
+                },
                 properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
             ) {
                 Surface(
@@ -1493,27 +1498,46 @@ fun OSFormScreen(
                     Column(modifier = Modifier.fillMaxSize()) {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            horizontalArrangement = Arrangement.Start
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             IconButton(
-                                onClick = { viewingImageUrl = null },
+                                onClick = {
+                                    viewingImageUrl = null
+                                    viewingBitmap = null
+                                },
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(Color.White.copy(alpha = 0.15f))
                             ) {
                                 Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = Color.White)
                             }
+                            Text(
+                                "Visualização da Foto",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.size(48.dp))
                         }
                         Box(
                             modifier = Modifier.fillMaxSize().padding(16.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            AsyncImage(
-                                model = viewingImageUrl,
-                                contentDescription = "Foto da OS",
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp))
-                            )
+                            if (viewingBitmap != null) {
+                                Image(
+                                    bitmap = viewingBitmap!!.asImageBitmap(),
+                                    contentDescription = "Foto Expandida",
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp))
+                                )
+                            } else if (viewingImageUrl != null) {
+                                AsyncImage(
+                                    model = viewingImageUrl,
+                                    contentDescription = "Foto Expandida",
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp))
+                                )
+                            }
                         }
                     }
                 }
@@ -1752,6 +1776,8 @@ private fun TechnicianExecutionSection(
     onServiceBitmapsChange: (List<Bitmap>) -> Unit,
     materialBitmaps: List<Bitmap>,
     onMaterialBitmapsChange: (List<Bitmap>) -> Unit,
+    onViewImage: (String) -> Unit = {},
+    onViewBitmap: (Bitmap) -> Unit = {},
     onRequestAttach: (String) -> Unit,
     onRequestCamera: (String) -> Unit
 ) {
@@ -1854,24 +1880,42 @@ private fun TechnicianExecutionSection(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(serviceBitmaps.size) { index ->
-                        Box(modifier = Modifier.padding(horizontal = 4.dp).size(72.dp)) {
+                        val bmp = serviceBitmaps[index]
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 6.dp)
+                                .size(84.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .border(1.5.dp, SicoiOrange.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
+                                .clickable { onViewBitmap(bmp) }
+                        ) {
                             Image(
-                                bitmap = serviceBitmaps[index].asImageBitmap(),
+                                bitmap = bmp.asImageBitmap(),
                                 contentDescription = "Foto ${index + 1}",
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .border(1.dp, SicoiCardBorder, RoundedCornerShape(10.dp))
+                                modifier = Modifier.fillMaxSize()
                             )
+                            // Ícone de Zoom translúcido
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(4.dp)
+                                    .size(22.dp)
+                                    .background(Color.Black.copy(alpha = 0.65f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.ZoomIn, contentDescription = "Ampliar", tint = Color.White, modifier = Modifier.size(14.dp))
+                            }
+                            // Botão de remover
                             IconButton(
                                 onClick = {
                                     onServiceBitmapsChange(serviceBitmaps.toMutableList().also { it.removeAt(index) })
                                 },
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .size(20.dp)
-                                    .background(SicoiError.copy(alpha = 0.85f), CircleShape)
+                                    .padding(2.dp)
+                                    .size(22.dp)
+                                    .background(SicoiError.copy(alpha = 0.9f), CircleShape)
                             ) {
                                 Icon(Icons.Default.Close, contentDescription = "Remover", tint = Color.White, modifier = Modifier.size(12.dp))
                             }
@@ -1879,7 +1923,7 @@ private fun TechnicianExecutionSection(
                     }
                 }
                 Text(
-                    "${serviceBitmaps.size} foto(s) selecionada(s)",
+                    "${serviceBitmaps.size} foto(s) anexada(s) • Toque para ampliar",
                     style = MaterialTheme.typography.labelSmall,
                     color = SicoiTextMuted,
                     textAlign = TextAlign.Center,
@@ -2294,23 +2338,41 @@ private fun TechnicianExecutionSection(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         items(materialBitmaps.size) { index ->
-                            Box(modifier = Modifier.padding(horizontal = 4.dp).size(72.dp)) {
+                            val bmp = materialBitmaps[index]
+                            Box(
+                                modifier = Modifier
+                                    .padding(horizontal = 6.dp)
+                                    .size(84.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .border(1.5.dp, SicoiSuccess.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
+                                    .clickable { onViewBitmap(bmp) }
+                            ) {
                                 Image(
-                                    bitmap = materialBitmaps[index].asImageBitmap(),
+                                    bitmap = bmp.asImageBitmap(),
                                     contentDescription = "Foto ${index + 1}",
                                     contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .border(1.dp, SicoiCardBorder, RoundedCornerShape(10.dp))
+                                    modifier = Modifier.fillMaxSize()
                                 )
+                                // Ícone de Zoom translúcido
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomStart)
+                                        .padding(4.dp)
+                                        .size(22.dp)
+                                        .background(Color.Black.copy(alpha = 0.65f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.ZoomIn, contentDescription = "Ampliar", tint = Color.White, modifier = Modifier.size(14.dp))
+                                }
+                                // Botão de remover
                                 IconButton(
                                     onClick = {
                                         onMaterialBitmapsChange(materialBitmaps.toMutableList().also { it.removeAt(index) })
                                     },
                                     modifier = Modifier
                                         .align(Alignment.TopEnd)
-                                        .size(20.dp)
+                                        .padding(4.dp)
+                                        .size(22.dp)
                                         .background(SicoiError.copy(alpha = 0.85f), CircleShape)
                                 ) {
                                     Icon(Icons.Default.Close, contentDescription = "Remover", tint = Color.White, modifier = Modifier.size(12.dp))
@@ -2319,8 +2381,8 @@ private fun TechnicianExecutionSection(
                         }
                     }
                     Text(
-                        "${materialBitmaps.size} foto(s) selecionada(s)",
-                        style = MaterialTheme.typography.labelSmall,
+                        "Toque na miniatura para ampliar",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                         color = SicoiTextMuted,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(top = 2.dp)
