@@ -1,4 +1,4 @@
-﻿package br.com.sicoi.mobile
+package br.com.sicoi.mobile
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
@@ -15,12 +15,16 @@ import br.com.sicoi.mobile.ui.workorders.PausedWorkOrdersScreen
 import br.com.sicoi.mobile.ui.workorders.TechnicianHistoryScreen
 import br.com.sicoi.mobile.ui.workorders.WorkOrdersScreen
 import br.com.sicoi.mobile.ui.osform.OSFormScreen
+import br.com.sicoi.mobile.ui.splash.SplashScreen
+import br.com.sicoi.mobile.core.network.SupabaseClient
+import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.launch
 
 /**
- * DefiniÃ§Ã£o centralizada de rotas de navegaÃ§Ã£o do App SICOI Mobile
+ * Definição centralizada de rotas de navegação do App SICOI Mobile
  */
 object Routes {
+    const val SPLASH = "splash"
     const val LOGIN = "login"
     const val SIGNUP = "signup"
     const val MODULES = "modules/{userName}"
@@ -51,11 +55,11 @@ object Routes {
 }
 
 /**
- * Grafo de navegaÃ§Ã£o principal
+ * Grafo de navegação principal
  */
 @Composable
 fun SicoiNavGraph(
-    startDestination: String = Routes.LOGIN,
+    startDestination: String = Routes.SPLASH,
     onLogout: () -> Unit = {},
     navController: NavHostController = rememberNavController()
 ) {
@@ -63,7 +67,20 @@ fun SicoiNavGraph(
         navController = navController,
         startDestination = startDestination
     ) {
-        // â”€â”€ Login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Splash Screen com Animação Inicial ────────────────────────────
+        composable(Routes.SPLASH) {
+            SplashScreen(
+                onAnimationFinish = {
+                    val isLoggedIn = SupabaseClient.client.auth.currentUserOrNull() != null
+                    val destination = if (isLoggedIn) Routes.modules("Técnico") else Routes.LOGIN
+                    navController.navigate(destination) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // ── Login ────────────────────────────────────────────────────────
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {

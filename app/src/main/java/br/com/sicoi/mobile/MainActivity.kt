@@ -1,4 +1,4 @@
-﻿package br.com.sicoi.mobile
+package br.com.sicoi.mobile
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -42,14 +42,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Determina se jÃ¡ estÃ¡ logado
-        val isLoggedIn = SupabaseClient.client.auth.currentUserOrNull() != null
-        val startRoute = if (isLoggedIn) Routes.modules("TÃ©cnico") else Routes.LOGIN
+        // Rota inicial sempre passa pela animação da SplashScreen
+        val startRoute = Routes.SPLASH
 
-        // Configura o WorkManager para sincronizaÃ§Ã£o offline periÃ³dica
+        // Configura o WorkManager para sincronização offline periódica
         OfflineSyncWorker.schedule(this)
 
-        // Solicita permissÃ£o de notificaÃ§Ã£o
+        // Solicita permissão de notificação
         requestNotificationPermission()
 
         setContent {
