@@ -1392,7 +1392,14 @@ fun OSFormScreen(
                             ) {
                                 // Botão Salvar Formulário (Caixa branca com texto em Preto)
                                 Button(
-                                    onClick = { showConfirmDialog = true },
+                                    onClick = {
+                                        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                                        val stf = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                                        val now = java.util.Date()
+                                        viewModel.finalDate = sdf.format(now)
+                                        viewModel.finalHour = stf.format(now)
+                                        showConfirmDialog = true
+                                    },
                                     modifier = Modifier.weight(1f).height(54.dp),
                                     shape = RoundedCornerShape(14.dp),
                                     border = BorderStroke(1.5.dp, SicoiOrange),
@@ -1750,7 +1757,7 @@ private fun TechnicianExecutionSection(
 ) {
     val context = LocalContext.current
 
-    // ── CARD 1: INTERVENÇÃO (PRIMEIRO QUADRO COM TÍTULO CENTRALIZADO) ──
+    // ── CARD 1: RELATÓRIO TÉCNICO (PRIMEIRO QUADRO COM TÍTULO CENTRALIZADO) ──
     Card(
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = SicoiCard),
@@ -1776,7 +1783,7 @@ private fun TechnicianExecutionSection(
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    "Intervenção",
+                    "Relatório Técnico",
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 18.sp,
@@ -2122,15 +2129,16 @@ private fun TechnicianExecutionSection(
 
     Spacer(modifier = Modifier.height(14.dp))
 
-    // ── CARD 3: MATERIAIS UTILIZADOS ──
+    // ── CARD 3: MATERIAIS UTILIZADOS (COMPACTO NA VERTICAL QUANDO VAZIO) ──
+    val hasMaterialsOrPhotos = viewModel.materialsList.isNotEmpty() || materialBitmaps.isNotEmpty()
     Card(
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = SicoiCard),
         border = BorderStroke(1.dp, SicoiSuccess.copy(alpha = 0.4f))
     ) {
         Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(if (hasMaterialsOrPhotos) 18.dp else 14.dp),
+            verticalArrangement = Arrangement.spacedBy(if (hasMaterialsOrPhotos) 12.dp else 0.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -2143,44 +2151,41 @@ private fun TechnicianExecutionSection(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(38.dp)
                             .background(SicoiSuccess.copy(alpha = 0.18f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(Icons.Default.List, contentDescription = null, tint = SicoiSuccess, modifier = Modifier.size(22.dp))
                     }
-                    Column {
-                        Text("Material Utilizado", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 17.5.sp), color = SicoiTextPrimary)
-                        Text("Peças e insumos aplicados", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
-                    }
+                    Text(
+                        "Material Utilizado",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp
+                        ),
+                        color = SicoiTextPrimary
+                    )
                 }
                 
                 // Botão Adicionar Linha
-                OutlinedButton(
+                Button(
                     onClick = {
                         viewModel.materialsList.add(MaterialItem(qty = "", description = "", price = ""))
                     },
-                    border = BorderStroke(1.dp, SicoiSuccess),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = SicoiSuccess),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = SicoiSuccess, contentColor = Color.White),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Adicionar", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
                 }
             }
 
-            HorizontalDivider(color = SicoiDivider)
+            // Conteúdo expandido apenas se houver itens ou fotos
+            if (hasMaterialsOrPhotos) {
+                HorizontalDivider(color = SicoiDivider)
 
-            if (viewModel.materialsList.isEmpty()) {
-                Text(
-                    "Nenhum material adicionado.",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted),
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    textAlign = TextAlign.Center
-                )
-            } else {
                 viewModel.materialsList.forEachIndexed { index, material ->
                     Row(
                         modifier = Modifier
@@ -2239,131 +2244,151 @@ private fun TechnicianExecutionSection(
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(4.dp))
-            HorizontalDivider(color = SicoiDivider)
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                "Fotos / Comprovantes de Insumos (Opcional)",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    color = SicoiTextSecondary,
-                    letterSpacing = 0.5.sp
-                )
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Botão 1: Anexar
-                OutlinedButton(
-                    onClick = { onRequestAttach("material") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, SicoiSuccess.copy(alpha = 0.5f)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = SicoiSuccess)
-                ) {
-                    Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Anexar", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
-                }
-
-                // Botão 2: Câmera
-                Button(
-                    onClick = { onRequestCamera("material") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = SicoiSuccess, contentColor = Color.White)
-                ) {
-                    Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Tirar Foto", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
-                }
-            }
-
-            if (materialBitmaps.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
-                LazyRow(
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
+                HorizontalDivider(color = SicoiDivider)
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    "Fotos / Comprovantes de Insumos (Opcional)",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = SicoiTextSecondary,
+                        letterSpacing = 0.5.sp
+                    )
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(materialBitmaps.size) { index ->
-                        Box(modifier = Modifier.padding(horizontal = 4.dp).size(72.dp)) {
-                            Image(
-                                bitmap = materialBitmaps[index].asImageBitmap(),
-                                contentDescription = "Foto ${index + 1}",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .border(1.dp, SicoiCardBorder, RoundedCornerShape(10.dp))
-                            )
-                            IconButton(
-                                onClick = {
-                                    onMaterialBitmapsChange(materialBitmaps.toMutableList().also { it.removeAt(index) })
-                                },
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .size(20.dp)
-                                    .background(SicoiError.copy(alpha = 0.85f), CircleShape)
-                            ) {
-                                Icon(Icons.Default.Close, contentDescription = "Remover", tint = Color.White, modifier = Modifier.size(12.dp))
+                    // Botão 1: Anexar
+                    OutlinedButton(
+                        onClick = { onRequestAttach("material") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, SicoiSuccess.copy(alpha = 0.5f)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = SicoiSuccess)
+                    ) {
+                        Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Anexar", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                    }
+
+                    // Botão 2: Câmera
+                    Button(
+                        onClick = { onRequestCamera("material") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = SicoiSuccess, contentColor = Color.White)
+                    ) {
+                        Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Tirar Foto", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                    }
+                }
+
+                if (materialBitmaps.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    LazyRow(
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(materialBitmaps.size) { index ->
+                            Box(modifier = Modifier.padding(horizontal = 4.dp).size(72.dp)) {
+                                Image(
+                                    bitmap = materialBitmaps[index].asImageBitmap(),
+                                    contentDescription = "Foto ${index + 1}",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .border(1.dp, SicoiCardBorder, RoundedCornerShape(10.dp))
+                                )
+                                IconButton(
+                                    onClick = {
+                                        onMaterialBitmapsChange(materialBitmaps.toMutableList().also { it.removeAt(index) })
+                                    },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .size(20.dp)
+                                        .background(SicoiError.copy(alpha = 0.85f), CircleShape)
+                                ) {
+                                    Icon(Icons.Default.Close, contentDescription = "Remover", tint = Color.White, modifier = Modifier.size(12.dp))
+                                }
                             }
                         }
                     }
+                    Text(
+                        "${materialBitmaps.size} foto(s) selecionada(s)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = SicoiTextMuted,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp)
+                    )
                 }
-                Text(
-                    "${materialBitmaps.size} foto(s) selecionada(s)",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = SicoiTextMuted,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp)
-                )
             }
         }
     }
 
     Spacer(modifier = Modifier.height(14.dp))
 
-    // ── CARD 4: ENCERRAMENTO ──
+    // ── CARD 4: ENCERRAMENTO DA O.S. (TÍTULO CENTRALIZADO E DATAS PREENCHIDAS) ──
+    val displayFinalDate = viewModel.finalDate.ifBlank {
+        java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()).also {
+            viewModel.finalDate = it
+        }
+    }
+    val displayFinalHour = viewModel.finalHour.ifBlank {
+        java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date()).also {
+            viewModel.finalHour = it
+        }
+    }
+
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = SicoiCard),
-        border = BorderStroke(1.dp, SicoiBlue.copy(alpha = 0.3f))
+        border = BorderStroke(1.dp, SicoiBlue.copy(alpha = 0.4f))
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Título Centralizado
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.Center
             ) {
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
-                        .background(SicoiBlue.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                        .size(40.dp)
+                        .background(SicoiBlue.copy(alpha = 0.18f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = SicoiBlue, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = SicoiBlue, modifier = Modifier.size(24.dp))
                 }
-                Column {
-                    Text("Encerramento da O.S.", style = MaterialTheme.typography.titleMedium, color = SicoiTextPrimary)
-                    Text("Data, hora e visto do técnico executor", style = MaterialTheme.typography.bodySmall, color = SicoiTextMuted)
-                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    "Encerramento da O.S.",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 18.sp,
+                        letterSpacing = 0.3.sp
+                    ),
+                    color = SicoiBlueLight,
+                    textAlign = TextAlign.Center
+                )
             }
 
-            HorizontalDivider(color = SicoiDivider)
+            HorizontalDivider(color = SicoiBlue.copy(alpha = 0.25f))
 
-            // Data e hora de encerramento — preenchidas automaticamente com o momento atual
+            // Data e hora de encerramento — preenchidas automaticamente com a data e hora atuais
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedTextField(
-                    value = viewModel.finalDate,
+                    value = displayFinalDate,
                     onValueChange = {},
                     readOnly = true,
                     placeholder = { Text("YYYY-MM-DD", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
@@ -2375,7 +2400,7 @@ private fun TechnicianExecutionSection(
                 )
 
                 OutlinedTextField(
-                    value = viewModel.finalHour,
+                    value = displayFinalHour,
                     onValueChange = {},
                     readOnly = true,
                     placeholder = { Text("HH:MM", style = MaterialTheme.typography.bodyMedium.copy(color = SicoiTextMuted)) },
@@ -2386,12 +2411,6 @@ private fun TechnicianExecutionSection(
                     colors = sicoiTextFieldColors()
                 )
             }
-            Text(
-                "⏱ Preenchido automaticamente no momento de salvar",
-                style = MaterialTheme.typography.labelSmall,
-                color = SicoiTextMuted,
-                modifier = Modifier.padding(top = 2.dp)
-            )
 
             OutlinedTextField(
                 value = viewModel.vistoExecutante,
