@@ -74,9 +74,80 @@ data class WorkOrder(
     }
 
     fun getFullTechnician(): String {
-        if (!tecnicoResponsavel.isNullOrBlank() && tecnicoResponsavel != "Não Atribuído") return tecnicoResponsavel
-        val fromPayload = parsePayloadField { it.vistoExecutante.ifBlank { it.assignedTechnician } }
-        return if (!fromPayload.isNullOrBlank() && fromPayload != "Não Atribuído") fromPayload else (tecnicoResponsavel ?: "Não atribuído")
+        val req = getFullRequester().trim()
+        val directTech = tecnicoResponsavel?.trim()
+        val payloadAssigned = parsePayloadField { it.assignedTechnician }?.trim()
+        val payloadVisto = parsePayloadField { it.vistoExecutante }?.trim()
+
+        fun isValidTech(name: String?): Boolean {
+            if (name.isNullOrBlank()) return false
+            val lower = name.lowercase()
+            if (lower == "não atribuído" || lower == "nao atribuido" || lower == "não informado" || lower == "nao informado") return false
+            if (lower == "solicitante") return false
+            if (req.isNotBlank() && name.equals(req, ignoreCase = true)) return false
+            return true
+        }
+
+        return when {
+            isValidTech(directTech) -> directTech!!
+            isValidTech(payloadAssigned) -> payloadAssigned!!
+            isValidTech(payloadVisto) -> payloadVisto!!
+            else -> "Aguardando atribuição"
+        }
+    }
+
+    fun isPaused(): Boolean {
+        val st = status.trim().lowercase()
+        if (st == "pausada" || st == "pausado" || st == "pausa") return true
+        val pState = parsePayloadField { it.pauseState }?.trim()?.lowercase()
+        return pState == "active" || pState == "paused" || pState == "pausa" || pState == "pausada"
+    }
+
+    fun isExternalService(): Boolean {
+        val ext = parsePayloadField { it.externalService }?.trim()?.lowercase()
+        return ext == "sim" || ext == "true" || ext == "1"
+    }
+
+    fun getPauseReason(): String? {
+        val reason = parsePayloadField { it.pauseReason }
+        if (!reason.isNullOrBlank()) return reason
+        val obsList = getPauseObservations()
+        if (obsList.isNotEmpty()) return obsList.last()
+        return null
+    }
+
+    fun getPauseObservations(): List<String> {
+        val sol = solucaoAplicada ?: return emptyList()
+        if (sol.startsWith("[RQ-11-DIGITAL]:")) {
+            return try {
+                val jsonStr = sol.removePrefix("[RQ-11-DIGITAL]:").trim()
+                val jsonParser = kotlinx.serialization.json.Json { 
+                    ignoreUnknownKeys = true 
+                    isLenient = true 
+                    coerceInputValues = true 
+                }
+                val payload = jsonParser.decodeFromString<OSExecutionPayload>(jsonStr)
+                payload.pauseObservations.filter { it.isNotBlank() }
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+        return emptyList()
+    }
+
+    fun getExternalJustification(): String? {
+        val just = parsePayloadField { it.externalJustification }
+        return if (!just.isNullOrBlank()) just else null
+    }
+
+    fun getExternalCompany(): String? {
+        val comp = parsePayloadField { it.externalCompany }
+        return if (!comp.isNullOrBlank()) comp else null
+    }
+
+    fun getExternalTechnicianName(): String? {
+        val name = parsePayloadField { it.externalTechnicianName }
+        return if (!name.isNullOrBlank()) name else null
     }
 
     fun getFullNumeroOs(): String {

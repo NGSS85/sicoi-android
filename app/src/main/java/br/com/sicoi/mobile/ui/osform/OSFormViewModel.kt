@@ -227,7 +227,7 @@ class OSFormViewModel @Inject constructor(
         }
     }
 
-    fun loadWorkOrder(osId: String, technicianName: String) {
+    fun loadWorkOrder(osId: String, technicianName: String, isRequesterMode: Boolean = false) {
         fetchAllHistory(technicianName)
         currentWorkOrderId = osId
         if (osId == "new" || osId.isBlank()) {
@@ -235,14 +235,17 @@ class OSFormViewModel @Inject constructor(
                 id = "NEW-${System.currentTimeMillis()}",
                 numeroOs = "OS-${(1000..9999).random()}",
                 dataAbertura = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()),
-                tecnicoResponsavel = technicianName,
-                solicitante = "",
+                tecnicoResponsavel = if (isRequesterMode) "" else technicianName,
+                solicitante = if (isRequesterMode) technicianName else "",
                 equipamento = "",
                 setor = "",
                 prioridade = "Normal",
                 descricaoProblema = ""
             )
-            setupFormFromOrder(newOrder, technicianName)
+            setupFormFromOrder(newOrder, if (isRequesterMode) "" else technicianName)
+            if (isRequesterMode && solicitanteForm.isBlank()) {
+                solicitanteForm = technicianName
+            }
             _state.value = OSFormUiState.Loaded(newOrder)
             return
         }
@@ -252,21 +255,21 @@ class OSFormViewModel @Inject constructor(
                 onSuccess = { orders ->
                     val order = orders.firstOrNull { it.id == osId }
                     if (order != null) {
-                        setupFormFromOrder(order, technicianName)
+                        setupFormFromOrder(order, if (isRequesterMode) "" else technicianName)
                         _state.value = OSFormUiState.Loaded(order)
                     } else {
                         val fallbackOrder = WorkOrder(
                             id = osId,
                             numeroOs = "OS-$osId",
                             dataAbertura = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()),
-                            tecnicoResponsavel = technicianName,
-                            solicitante = "",
+                            tecnicoResponsavel = if (isRequesterMode) "" else technicianName,
+                            solicitante = if (isRequesterMode) technicianName else "",
                             equipamento = "",
                             setor = "",
                             prioridade = "Normal",
                             descricaoProblema = ""
                         )
-                        setupFormFromOrder(fallbackOrder, technicianName)
+                        setupFormFromOrder(fallbackOrder, if (isRequesterMode) "" else technicianName)
                         _state.value = OSFormUiState.Loaded(fallbackOrder)
                     }
                 },
@@ -275,14 +278,14 @@ class OSFormViewModel @Inject constructor(
                         id = osId,
                         numeroOs = "OS-$osId",
                         dataAbertura = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()),
-                        tecnicoResponsavel = technicianName,
-                        solicitante = "",
+                        tecnicoResponsavel = if (isRequesterMode) "" else technicianName,
+                        solicitante = if (isRequesterMode) technicianName else "",
                         equipamento = "",
                         setor = "",
                         prioridade = "Normal",
                         descricaoProblema = ""
                     )
-                    setupFormFromOrder(fallbackOrder, technicianName)
+                    setupFormFromOrder(fallbackOrder, if (isRequesterMode) "" else technicianName)
                     _state.value = OSFormUiState.Loaded(fallbackOrder)
                 }
             )
@@ -314,8 +317,7 @@ class OSFormViewModel @Inject constructor(
             val todayDate = dateForm.ifBlank { java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()) }
             val currentTime = timeForm.ifBlank { java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date()) }
 
-            val finalTechnician = technicianName.ifBlank { "Não Atribuído" }
-
+            // Na criação pelo solicitante, a OS nasce sem técnico atribuído até que seja selecionado no painel Web
             val rq11Json = """
                 {
                     "os_number": "$generatedOsNumber",
@@ -331,7 +333,7 @@ class OSFormViewModel @Inject constructor(
                     "equipment_no": "$patrimonioForm",
                     "priority": "${prioridade.lowercase()}",
                     "description_to_execute": "$descricaoProblema",
-                    "assigned_technician": "$finalTechnician",
+                    "assigned_technician": "",
                     "origem": "App mobile"
                 }
             """.trimIndent()
@@ -340,14 +342,14 @@ class OSFormViewModel @Inject constructor(
                 id = java.util.UUID.randomUUID().toString(),
                 numeroOs = generatedOsNumber,
                 dataAbertura = todayDate,
-                tecnicoResponsavel = finalTechnician,
+                tecnicoResponsavel = "",
                 solicitante = solicitante.ifBlank { "Solicitante" },
                 equipamento = equipamento,
                 setor = setor,
                 prioridade = prioridade.ifBlank { "Normal" },
                 descricaoProblema = descricaoProblema,
                 solucaoAplicada = "[RQ-11-DIGITAL]: $rq11Json",
-                status = "Em Aberto"
+                status = "Aberta"
             )
 
             // Upload de fotos anexadas no celular para o Supabase Storage
@@ -364,7 +366,7 @@ class OSFormViewModel @Inject constructor(
             repository.createWorkOrder(newOrder, isOnline, uploadedUrls).fold(
                 onSuccess = {
                     _state.value = OSFormUiState.SavedOnline("Ordem de Serviço $generatedOsNumber gerada e enviada com sucesso!")
-                    fetchAllHistory(technicianName)
+                    fetchAllHistory(solicitante)
                     onSuccess()
                 },
                 onFailure = {

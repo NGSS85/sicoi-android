@@ -735,6 +735,16 @@ private fun HistoryOrderItem(order: WorkOrder, category: HistoryCategory) {
             ?: "AVULSO"
     }
 
+    val solicitante = remember(order.solicitante, order.solucaoAplicada) {
+        order.getFullRequester().ifBlank {
+            extractJsonField(order.solucaoAplicada, "responsible")
+                ?: extractJsonField(order.solucaoAplicada, "solicitante")
+                ?: extractJsonField(order.solucaoAplicada, "requester")
+                ?: order.solicitante
+                ?: "Não informado"
+        }
+    }
+
     val comentarioTecnico = remember(order.solucaoAplicada, order.descricaoProblema, category) {
         when (category) {
             HistoryCategory.FINALIZED -> {
@@ -904,6 +914,38 @@ private fun HistoryOrderItem(order: WorkOrder, category: HistoryCategory) {
                         )
                     }
                 }
+            }
+
+            // Linha do Solicitante da Ordem de Serviço
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    Icons.Default.Person,
+                    contentDescription = null,
+                    tint = SicoiOrange,
+                    modifier = Modifier.size(15.dp)
+                )
+                Text(
+                    text = "Solicitante: ",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = Color.White
+                )
+                Text(
+                    text = solicitante,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = 12.5.sp,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = SicoiOrange,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
 
             // Linha 3: Comentário do Técnico
