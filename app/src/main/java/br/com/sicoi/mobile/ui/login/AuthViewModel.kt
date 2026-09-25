@@ -59,6 +59,29 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun loginWithPin(pin: String) {
+        val cleanPin = pin.trim()
+        if (cleanPin.isBlank()) {
+            _loginState.value = LoginUiState.Error("Digite o seu PIN de acesso")
+            return
+        }
+        viewModelScope.launch {
+            _loginState.value = LoginUiState.Loading
+            _loginState.value = when (val result = authRepository.loginWithPin(cleanPin)) {
+                is AuthResult.Success -> LoginUiState.Success
+                is AuthResult.Error   -> when (result.message) {
+                    "PENDING"  -> LoginUiState.PendingApproval(
+                        "Cadastro com este PIN aguardando aprovação do administrador."
+                    )
+                    "REJECTED" -> LoginUiState.Error(
+                        "Acesso negado. Seu cadastro foi rejeitado. Entre em contato com o administrador."
+                    )
+                    else -> LoginUiState.Error(result.message)
+                }
+            }
+        }
+    }
+
     fun signUp(email: String, password: String, fullName: String, company: String, role: String, pin: String) {
         if (email.isBlank() || password.isBlank() || fullName.isBlank() || pin.isBlank()) {
             _signupState.value = SignupUiState.Error("Preencha todos os campos obrigatórios")

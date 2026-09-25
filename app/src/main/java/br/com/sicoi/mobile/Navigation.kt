@@ -71,9 +71,8 @@ fun SicoiNavGraph(
         composable(Routes.SPLASH) {
             SplashScreen(
                 onAnimationFinish = {
-                    val isLoggedIn = SupabaseClient.client.auth.currentUserOrNull() != null
-                    val destination = if (isLoggedIn) Routes.modules("Técnico") else Routes.LOGIN
-                    navController.navigate(destination) {
+                    // Todo acesso inicial ao app deve ser pelo PIN
+                    navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.SPLASH) { inclusive = true }
                     }
                 }
@@ -84,7 +83,9 @@ fun SicoiNavGraph(
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
-                    navController.navigate(Routes.modules("TÃ©cnico")) {
+                    val user = br.com.sicoi.mobile.core.session.SessionManager.getCurrentUser()
+                    val name = user?.fullName ?: "Usuário"
+                    navController.navigate(Routes.modules(name)) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 },
@@ -94,7 +95,7 @@ fun SicoiNavGraph(
             )
         }
 
-        // â”€â”€ Cadastro â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Cadastro ─────────────────────────────────────────────────────
         composable(Routes.SIGNUP) {
             SignupScreen(
                 onSignupSuccess = {
@@ -106,21 +107,25 @@ fun SicoiNavGraph(
             )
         }
 
-        // â”€â”€ Tela 2: SeleÃ§Ã£o de MÃ³dulos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Tela 2: Seleção de Módulos (Acesso Direto por Perfil e Luz Intensa) ──
         composable(
             route = Routes.MODULES,
             arguments = listOf(navArgument("userName") { type = NavType.StringType })
         ) { backStackEntry ->
             val userName = backStackEntry.arguments?.getString("userName")
-                ?.let { java.net.URLDecoder.decode(it, "UTF-8") } ?: "TÃ©cnico"
+                ?.let { java.net.URLDecoder.decode(it, "UTF-8") } ?: "Usuário"
 
             ModulesScreen(
                 userName = userName,
-                onNavigateToMaintenance = {
-                    navController.navigate(Routes.TECHNICIANS)
+                onNavigateToRequesterForm = { requesterName ->
+                    navController.navigate(Routes.osFormRequester("new", requesterName))
+                },
+                onNavigateToTechnician = { techId, techName ->
+                    navController.navigate(Routes.workOrders(techId, techName))
                 },
                 onLogout = {
                     onLogout()
+                    br.com.sicoi.mobile.core.session.SessionManager.clear()
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }
                     }
@@ -128,7 +133,7 @@ fun SicoiNavGraph(
             )
         }
 
-        // â”€â”€ Tela 3: SeleÃ§Ã£o de TÃ©cnicos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Tela 3: Seleção de Técnicos (Legado/Opcional) ─────────────────
         composable(Routes.TECHNICIANS) {
             TechniciansScreen(
                 onNavigateBack = { navController.popBackStack() },
@@ -141,7 +146,7 @@ fun SicoiNavGraph(
             )
         }
 
-        // â”€â”€ Tela 4: Lista de O.S. em Aberto â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Tela 4: Lista de O.S. em Aberto ──────────────────────────────
         composable(
             route = Routes.WORK_ORDERS,
             arguments = listOf(
@@ -156,6 +161,7 @@ fun SicoiNavGraph(
             WorkOrdersScreen(
                 technicianId   = techId,
                 technicianName = techName,
+                canOpenOs      = br.com.sicoi.mobile.core.session.SessionManager.canUserOpenOs(),
                 onNavigateBack = { navController.popBackStack() },
                 onSelectWorkOrder = { osId ->
                     navController.navigate(Routes.osForm(osId, techName))
@@ -165,6 +171,9 @@ fun SicoiNavGraph(
                 },
                 onNavigateToPausedOrders = {
                     navController.navigate(Routes.pausedOrders(techName))
+                },
+                onOpenNewOs = {
+                    navController.navigate(Routes.osFormRequester("new", techName))
                 }
             )
         }

@@ -49,10 +49,17 @@ fun LoginScreen(
 
     var email    by remember { mutableStateOf(prefs.getString("saved_email", "") ?: "") }
     var password by remember { mutableStateOf(prefs.getString("saved_password", "") ?: "") }
+    var pin      by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(prefs.getBoolean("remember_me", false)) }
     var showPassword by remember { mutableStateOf(false) }
+    var showPin by remember { mutableStateOf(false) }
     var showPendingDialog by remember { mutableStateOf(false) }
     var pendingMessage by remember { mutableStateOf("") }
+
+    // Garante que o PIN nunca fique salvo
+    LaunchedEffect(Unit) {
+        prefs.edit().remove("saved_pin").apply()
+    }
 
     // Reage ao estado do login
     LaunchedEffect(loginState) {
@@ -167,7 +174,7 @@ fun LoginScreen(
                 modifier = Modifier.padding(top = 4.dp)
             )
 
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             // Card do formulário
             Card(
@@ -182,11 +189,11 @@ fun LoginScreen(
                         "Acesso ao Sistema",
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
+                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
                         color = SicoiTextPrimary
                     )
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(18.dp))
 
                     // Campo E-mail
                     OutlinedTextField(
@@ -231,18 +238,10 @@ fun LoginScreen(
                         visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Password,
-                            imeAction = ImeAction.Done
+                            imeAction = ImeAction.Next
                         ),
                         keyboardActions = KeyboardActions(
-                            onDone = {
-                                focusManager.clearFocus()
-                                if (rememberMe) {
-                                    prefs.edit().putString("saved_email", email).putString("saved_password", password).putBoolean("remember_me", true).apply()
-                                } else {
-                                    prefs.edit().remove("saved_email").remove("saved_password").putBoolean("remember_me", false).apply()
-                                }
-                                viewModel.login(email, password)
-                            }
+                            onNext = { focusManager.moveFocus(FocusDirection.Down) }
                         ),
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
@@ -293,42 +292,120 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Botão Entrar
-                    Button(
-                        onClick = { 
-                            if (rememberMe) {
-                                prefs.edit().putString("saved_email", email).putString("saved_password", password).putBoolean("remember_me", true).apply()
-                            } else {
-                                prefs.edit().remove("saved_email").remove("saved_password").putBoolean("remember_me", false).apply()
-                            }
-                            viewModel.login(email, password) 
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = SicoiOrange,
-                            contentColor = Color.White
-                        ),
-                        enabled = loginState !is LoginUiState.Loading
+                    // ── CAIXA DE ACESSO DIRETO POR PIN ─────────────────────────
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = SicoiSurface,
+                        border = BorderStroke(1.5.dp, SicoiOrange.copy(alpha = 0.6f))
                     ) {
-                        if (loginState is LoginUiState.Loading) {
-                            CircularProgressIndicator(
-                                color = Color.White,
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        } else {
-                            Icon(Icons.Default.Login, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "Entrar",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontSize = 15.sp,
-                                    letterSpacing = 0.5.sp
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.padding(bottom = 10.dp)
+                            ) {
+                                Icon(Icons.Default.Lock, contentDescription = null, tint = SicoiOrange, modifier = Modifier.size(18.dp))
+                                Text(
+                                    "Acesso Direto por PIN",
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    ),
+                                    color = SicoiTextPrimary
                                 )
+                            }
+
+                            // Caixa com a inscrição "PIN"
+                            OutlinedTextField(
+                                value = pin,
+                                onValueChange = {
+                                    val digitsOnly = it.filter { c -> c.isDigit() }.take(8)
+                                    pin = digitsOnly
+                                },
+                                label = { Text("PIN") },
+                                placeholder = { Text("Digite seu PIN") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Password, contentDescription = null, tint = SicoiOrange)
+                                },
+                                trailingIcon = {
+                                    IconButton(onClick = { showPin = !showPin }) {
+                                        Icon(
+                                            if (showPin) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                            contentDescription = null,
+                                            tint = SicoiTextMuted
+                                        )
+                                    }
+                                },
+                                visualTransformation = if (showPin) VisualTransformation.None else PasswordVisualTransformation(),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.NumberPassword,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        focusManager.clearFocus()
+                                        if (pin.isNotBlank()) {
+                                            if (rememberMe) {
+                                                prefs.edit().putString("saved_email", email).putString("saved_password", password).putBoolean("remember_me", true).apply()
+                                            } else {
+                                                prefs.edit().remove("saved_email").remove("saved_password").putBoolean("remember_me", false).apply()
+                                            }
+                                            viewModel.loginWithPin(pin)
+                                        }
+                                    }
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                singleLine = true,
+                                colors = sicoiTextFieldColors()
                             )
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // Botão de Acesso Principal por PIN
+                            Button(
+                                onClick = {
+                                    focusManager.clearFocus()
+                                    if (rememberMe) {
+                                        prefs.edit().putString("saved_email", email).putString("saved_password", password).putBoolean("remember_me", true).apply()
+                                    } else {
+                                        prefs.edit().remove("saved_email").remove("saved_password").putBoolean("remember_me", false).apply()
+                                    }
+                                    viewModel.loginWithPin(pin)
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = SicoiOrange,
+                                    contentColor = Color.White
+                                ),
+                                enabled = loginState !is LoginUiState.Loading && pin.isNotBlank()
+                            ) {
+                                if (loginState is LoginUiState.Loading) {
+                                    CircularProgressIndicator(
+                                        color = Color.White,
+                                        strokeWidth = 2.dp,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                } else {
+                                    Icon(Icons.Default.Login, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "Entrar com PIN",
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontSize = 15.sp,
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                            letterSpacing = 0.5.sp
+                                        )
+                                    )
+                                }
+                            }
                         }
                     }
                 }

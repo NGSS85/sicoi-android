@@ -14,10 +14,22 @@ data class UserProfile(
     @SerialName("approval_status") val approvalStatus: String = "pending",
     @SerialName("fcm_token") val fcmToken: String? = null,
     @SerialName("is_mobile_user") val isMobileUser: Boolean = true,
-    @SerialName("role") val role: String = "Solicitante", // "Técnico" ou "Solicitante"
+    @SerialName("role") val role: String = "Solicitante", // "Técnico", "Solicitante" ou "Ambos"
     @SerialName("pin") val pin: String = "2839",
+    @SerialName("allowed_modules") val allowedModules: List<String>? = listOf("manutencao"),
+    @SerialName("can_open_os") val canOpenOs: Boolean = false,
     @SerialName("created_at") val createdAt: String? = null
-)
+) {
+    fun hasPermissionToOpenOs(): Boolean {
+        return canOpenOs || role.equals("Ambos", ignoreCase = true) || role.equals("Solicitante", ignoreCase = true)
+    }
+
+    fun isModuleAllowed(moduleId: String): Boolean {
+        if (role.equals("Admin", ignoreCase = true) || email.contains("admin")) return true
+        val modules = allowedModules ?: listOf("manutencao")
+        return modules.any { it.equals(moduleId, ignoreCase = true) }
+    }
+}
 
 /** Reflete a tabela public.ind_maint_technicians */
 @Serializable
@@ -26,7 +38,8 @@ data class Technician(
     val name: String,
     val status: String = "Ativo",
     val pin: String = "2839",
-    val role: String = "Técnico"
+    val role: String = "Técnico",
+    val canOpenOs: Boolean = false
 )
 
 /** Reflete a tabela public.ind_maint_os */
@@ -48,7 +61,10 @@ data class WorkOrder(
     @SerialName("data_fim") val dataFim: String? = null,
     @SerialName("assinatura_url") val assinaturaUrl: String? = null,
     @SerialName("foto_antes_url") val fotoAntesUrl: String? = null,
-    @SerialName("foto_depois_url") val fotoDepoisUrl: String? = null
+    @SerialName("foto_depois_url") val fotoDepoisUrl: String? = null,
+    val atualizacao: String? = null,
+    @SerialName("motivo_pausa") val motivoPausa: String? = null,
+    @SerialName("observacoes_pausa") val observacoesPausa: String? = null
 ) {
     fun getFullEquipment(): String {
         if (!equipamento.isNullOrBlank() && equipamento != "Geral") return equipamento
@@ -114,6 +130,26 @@ data class WorkOrder(
         val obsList = getPauseObservations()
         if (obsList.isNotEmpty()) return obsList.last()
         return null
+    }
+
+    fun getPauseUpdate(): String {
+        if (!atualizacao.isNullOrBlank()) return atualizacao
+        if (!motivoPausa.isNullOrBlank()) return motivoPausa
+        if (!observacoesPausa.isNullOrBlank()) return observacoesPausa
+
+        val obsList = getPauseObservations()
+        if (obsList.isNotEmpty()) {
+            return obsList.last()
+        }
+        val reason = getPauseReason()
+        if (!reason.isNullOrBlank()) {
+            return reason
+        }
+        val just = getExternalJustification()
+        if (!just.isNullOrBlank()) {
+            return just
+        }
+        return "Atendimento temporariamente pausado pelo técnico responsável."
     }
 
     fun getPauseObservations(): List<String> {
