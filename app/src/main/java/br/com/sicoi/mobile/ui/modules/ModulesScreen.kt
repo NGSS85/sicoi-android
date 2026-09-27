@@ -47,6 +47,8 @@ fun ModulesScreen(
     userName: String = "Técnico",
     onNavigateToRequesterForm: (requesterName: String) -> Unit = {},
     onNavigateToTechnician: (technicianId: String, technicianName: String) -> Unit = { _, _ -> },
+    onNavigateToToolRequesterForm: (requesterName: String) -> Unit = {},
+    onNavigateToToolTechnician: (technicianId: String, technicianName: String) -> Unit = { _, _ -> },
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
@@ -204,6 +206,13 @@ fun ModulesScreen(
                                     } else {
                                         // Técnico ou Ambos
                                         onNavigateToTechnician(userId, displayName)
+                                    }
+                                } else if (module.id == "ferramentaria") {
+                                    if (role.equals("Solicitante", ignoreCase = true)) {
+                                        onNavigateToToolRequesterForm(displayName)
+                                    } else {
+                                        // Técnico ou Ambos
+                                        onNavigateToToolTechnician(userId, displayName)
                                     }
                                 } else {
                                     android.widget.Toast.makeText(
@@ -370,7 +379,7 @@ private fun ModuleCard(
                                     modifier = Modifier.size(13.dp)
                                 )
                                 Text(
-                                    "Acesso Liberado · Manutenção",
+                                    "Acesso Liberado · ${module.title}",
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.SemiBold,
