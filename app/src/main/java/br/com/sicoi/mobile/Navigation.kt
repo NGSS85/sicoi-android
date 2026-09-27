@@ -16,6 +16,10 @@ import br.com.sicoi.mobile.ui.workorders.TechnicianHistoryScreen
 import br.com.sicoi.mobile.ui.workorders.WorkOrdersScreen
 import br.com.sicoi.mobile.ui.osform.OSFormScreen
 import br.com.sicoi.mobile.ui.splash.SplashScreen
+import br.com.sicoi.mobile.ui.toolshop.ToolWorkOrdersScreen
+import br.com.sicoi.mobile.ui.toolshop.ToolOSFormScreen
+import br.com.sicoi.mobile.ui.toolshop.ToolTechnicianHistoryScreen
+import br.com.sicoi.mobile.ui.toolshop.ToolPausedWorkOrdersScreen
 import br.com.sicoi.mobile.core.network.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.launch
@@ -35,6 +39,13 @@ object Routes {
     const val OS_FORM = "os_form/{workOrderId}/{technicianName}"
     const val OS_FORM_REQUESTER = "os_form_requester/{workOrderId}/{technicianName}"
 
+    // Rotas da Ferramentaria
+    const val TOOL_WORK_ORDERS = "tool_work_orders/{technicianId}/{technicianName}"
+    const val TOOL_PAUSED_ORDERS = "tool_paused_orders/{technicianName}"
+    const val TOOL_TECHNICIAN_HISTORY = "tool_technician_history/{technicianName}"
+    const val TOOL_OS_FORM = "tool_os_form/{workOrderId}/{technicianName}"
+    const val TOOL_OS_FORM_REQUESTER = "tool_os_form_requester/{workOrderId}/{technicianName}"
+
     fun modules(userName: String) =
         "modules/${java.net.URLEncoder.encode(userName, "UTF-8")}"
 
@@ -52,6 +63,21 @@ object Routes {
 
     fun osFormRequester(workOrderId: String, technicianName: String) =
         "os_form_requester/$workOrderId/${java.net.URLEncoder.encode(technicianName, "UTF-8")}"
+
+    fun toolWorkOrders(technicianId: String, technicianName: String) =
+        "tool_work_orders/$technicianId/${java.net.URLEncoder.encode(technicianName, "UTF-8")}"
+
+    fun toolPausedOrders(technicianName: String) =
+        "tool_paused_orders/${java.net.URLEncoder.encode(technicianName, "UTF-8")}"
+
+    fun toolTechnicianHistory(technicianName: String) =
+        "tool_technician_history/${java.net.URLEncoder.encode(technicianName, "UTF-8")}"
+
+    fun toolOsForm(workOrderId: String, technicianName: String) =
+        "tool_os_form/$workOrderId/${java.net.URLEncoder.encode(technicianName, "UTF-8")}"
+
+    fun toolOsFormRequester(workOrderId: String, technicianName: String) =
+        "tool_os_form_requester/$workOrderId/${java.net.URLEncoder.encode(technicianName, "UTF-8")}"
 }
 
 /**
@@ -122,6 +148,12 @@ fun SicoiNavGraph(
                 },
                 onNavigateToTechnician = { techId, techName ->
                     navController.navigate(Routes.workOrders(techId, techName))
+                },
+                onNavigateToToolRequesterForm = { requesterName ->
+                    navController.navigate(Routes.toolOsFormRequester("new", requesterName))
+                },
+                onNavigateToToolTechnician = { techId, techName ->
+                    navController.navigate(Routes.toolWorkOrders(techId, techName))
                 },
                 onLogout = {
                     onLogout()
@@ -259,6 +291,114 @@ fun SicoiNavGraph(
                 onFinalized    = {
                     navController.popBackStack()
                 }
+            )
+        }
+
+        // ── Ferramentaria: Lista de O.S. (Técnico) ────────────────────────
+        composable(
+            route = Routes.TOOL_WORK_ORDERS,
+            arguments = listOf(
+                navArgument("technicianId")   { type = NavType.StringType },
+                navArgument("technicianName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val techId   = backStackEntry.arguments?.getString("technicianId")   ?: ""
+            val techName = backStackEntry.arguments?.getString("technicianName")
+                ?.let { java.net.URLDecoder.decode(it, "UTF-8") } ?: ""
+
+            ToolWorkOrdersScreen(
+                technicianId   = techId,
+                technicianName = techName,
+                canOpenOs      = true,
+                onNavigateBack = { navController.popBackStack() },
+                onSelectWorkOrder = { osId ->
+                    navController.navigate(Routes.toolOsForm(osId, techName))
+                },
+                onNavigateToHistory = {
+                    navController.navigate(Routes.toolTechnicianHistory(techName))
+                },
+                onNavigateToPausedOrders = {
+                    navController.navigate(Routes.toolPausedOrders(techName))
+                },
+                onOpenNewOs = {
+                    navController.navigate(Routes.toolOsFormRequester("new", techName))
+                }
+            )
+        }
+
+        // ── Ferramentaria: Lista de O.S. Pausadas ─────────────────────────
+        composable(
+            route = Routes.TOOL_PAUSED_ORDERS,
+            arguments = listOf(navArgument("technicianName") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val techName = backStackEntry.arguments?.getString("technicianName")
+                ?.let { java.net.URLDecoder.decode(it, "UTF-8") } ?: ""
+
+            ToolPausedWorkOrdersScreen(
+                technicianName = techName,
+                onNavigateBack = { navController.popBackStack() },
+                onSelectWorkOrder = { osId ->
+                    navController.navigate(Routes.toolOsForm(osId, techName))
+                }
+            )
+        }
+
+        // ── Ferramentaria: Histórico ─────────────────────────────────────
+        composable(
+            route = Routes.TOOL_TECHNICIAN_HISTORY,
+            arguments = listOf(navArgument("technicianName") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val techName = backStackEntry.arguments?.getString("technicianName")
+                ?.let { java.net.URLDecoder.decode(it, "UTF-8") } ?: ""
+
+            ToolTechnicianHistoryScreen(
+                technicianName = techName,
+                onNavigateBack = { navController.popBackStack() },
+                onSelectOrder = { osId ->
+                    navController.navigate(Routes.toolOsForm(osId, techName))
+                }
+            )
+        }
+
+        // ── Ferramentaria: Formulário de O.S. (Técnico) ───────────────────
+        composable(
+            route = Routes.TOOL_OS_FORM,
+            arguments = listOf(
+                navArgument("workOrderId")    { type = NavType.StringType },
+                navArgument("technicianName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val osId     = backStackEntry.arguments?.getString("workOrderId")     ?: ""
+            val techName = backStackEntry.arguments?.getString("technicianName")
+                ?.let { java.net.URLDecoder.decode(it, "UTF-8") } ?: ""
+
+            ToolOSFormScreen(
+                workOrderId    = osId,
+                technicianName = techName,
+                isRequesterMode = false,
+                onNavigateBack = { navController.popBackStack() },
+                onFinalized    = { navController.popBackStack() }
+            )
+        }
+
+        // ── Ferramentaria: Formulário de O.S. (Solicitante) ───────────────
+        composable(
+            route = Routes.TOOL_OS_FORM_REQUESTER,
+            arguments = listOf(
+                navArgument("workOrderId")    { type = NavType.StringType },
+                navArgument("technicianName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val osId     = backStackEntry.arguments?.getString("workOrderId")     ?: "new"
+            val techName = backStackEntry.arguments?.getString("technicianName")
+                ?.let { java.net.URLDecoder.decode(it, "UTF-8") } ?: ""
+
+            ToolOSFormScreen(
+                workOrderId    = osId,
+                technicianName = techName,
+                isRequesterMode = true,
+                onNavigateBack = { navController.popBackStack() },
+                onFinalized    = { navController.popBackStack() }
             )
         }
     }
